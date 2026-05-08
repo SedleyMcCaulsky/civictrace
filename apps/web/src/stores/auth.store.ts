@@ -1,5 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import axios from 'axios';
+
+// Force production URL - never reads from env
+axios.defaults.baseURL = 'https://civictrace-production.up.railway.app/api/v1';
 
 interface User {
   id: string;
@@ -26,18 +30,14 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
-
       login: (token, user) => {
         localStorage.setItem('civictrace_token', token);
         set({ token, user, isAuthenticated: true });
       },
-
       logout: () => {
         localStorage.removeItem('civictrace_token');
-        localStorage.removeItem('civictrace_user');
         set({ token: null, user: null, isAuthenticated: false });
       },
-
       hasPermission: (permission: string) => {
         const { user } = get();
         return user?.permissions?.includes(permission) ?? false;
@@ -45,11 +45,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'civictrace_auth',
-      partialize: (state) => ({
-        user: state.user,
-        token: state.token,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      partialize: (state) => ({ user: state.user, token: state.token, isAuthenticated: state.isAuthenticated }),
     },
   ),
 );

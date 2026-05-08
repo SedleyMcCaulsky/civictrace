@@ -1,9 +1,7 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://civictrace-production.up.railway.app/api/v1';
-
 export const api = axios.create({
-  baseURL: API_URL,
+  baseURL: 'https://civictrace-production.up.railway.app/api/v1',
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 });
@@ -22,7 +20,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('civictrace_token');
-        localStorage.removeItem('civictrace_user');
         window.location.href = '/login';
       }
     }
