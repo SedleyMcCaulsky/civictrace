@@ -1,0 +1,54 @@
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+
+import appConfig from './config/app.config';
+import databaseConfig from './config/database.config';
+import jwtConfig from './config/jwt.config';
+
+import { DatabaseModule } from './shared/database/database.module';
+import { AuditInterceptor } from './shared/interceptors/audit.interceptor';
+import { JwtAuthGuard } from './shared/auth/jwt-auth.guard';
+import { PermissionsGuard } from './shared/guards/permissions.guard';
+
+import { IdentityModule } from './modules/identity/identity.module';
+import { GisModule } from './modules/gis/gis.module';
+import { ComplianceModule } from './modules/compliance/compliance.module';
+import { ReportingModule } from './modules/reporting/reporting.module';
+import { EvidenceModule } from './modules/evidence/evidence.module';
+import { PropertyCaseModule } from './modules/property-case/property-case.module';
+import { DeliveryModule } from './modules/delivery/delivery.module';
+import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
+import { AuditModule } from './modules/audit/audit.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [appConfig, databaseConfig, jwtConfig],
+      envFilePath: '.env',
+    }),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
+    DatabaseModule,
+    IdentityModule,
+    GisModule,
+    ComplianceModule,
+    ReportingModule,
+    EvidenceModule,
+    PropertyCaseModule,
+    DeliveryModule,
+    ReconciliationModule,
+    AuditModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+  ],
+})
+export class AppModule {}
