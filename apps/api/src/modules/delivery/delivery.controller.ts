@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Body, Param, Query,
+  Controller, Post, Get, Delete, Patch, Body, Param, Query,
   ParseUUIDPipe, Request, Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
@@ -75,5 +75,46 @@ export class DeliveryController {
     @Query('to') to: string,
   ) {
     return this.service.getAreaDeliverySummary(areaId, from, to);
+  }
+
+  @Get('assignments/all')
+  @RequirePermissions('delivery:read')
+  @ApiOperation({ summary: 'All assignments supervisor view' })
+  async getAllAssignments(
+    @Query('officerId') officerId?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.service.getAllAssignments({ officerId, status });
+  }
+
+  @Post('assignments/simple')
+  @RequirePermissions('delivery:assign')
+  @ApiOperation({ summary: 'Create assignment' })
+  async createSimpleAssignment(@Body() dto: any, @Request() req: any) {
+    return this.service.createSimpleAssignment(dto, req.user.sub);
+  }
+
+  @Patch('assignments/:id/status')
+  @RequirePermissions('delivery:assign')
+  @ApiOperation({ summary: 'Update assignment status' })
+  async updateAssignmentStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    return this.service.updateAssignmentStatus(id, status);
+  }
+
+  @Delete('assignments/:id/remove')
+  @RequirePermissions('delivery:assign')
+  @ApiOperation({ summary: 'Remove assignment' })
+  async removeAssignment(@Param('id') id: string) {
+    return this.service.removeAssignment(id);
+  }
+
+  @Get('officers')
+  @RequirePermissions('delivery:read')
+  @ApiOperation({ summary: 'Get officers list' })
+  async getOfficers() {
+    return this.service.getOfficers();
   }
 }

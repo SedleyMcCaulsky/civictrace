@@ -196,4 +196,93 @@ export class DeliveryService {
       [areaId, dateFrom, dateTo],
     );
   }
+
+  async getAllAssignments(filters: { officerId?: string; status?: string }) {
+    let query = `
+      SELECT oa.id, oa.assignment_date, oa.status, oa.total_cases,
+             oa.completed_cases, oa.notes,
+             u.full_name as officer_name, u.id as officer_id,
+             u.region as officer_region,
+             a.name as area_name, a.parish, a.region,
+             sup.full_name as assigned_by_name
+      FROM delivery.officer_assignment oa
+      JOIN identity.user u ON u.id = oa.officer_id
+      JOIN gis.area a ON a.id = oa.area_id
+      LEFT JOIN identity.user sup ON sup.id = oa.supervisor_id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    if (filters.officerId) {
+      params.push(filters.officerId);
+      query += ` AND oa.officer_id = $${params.length}`;
+    }
+    if (filters.status) {
+      params.push(filters.status);
+      query += ` AND oa.status = $${params.length}`;
+    }
+    query += ` ORDER BY oa.assignment_date DESC LIMIT 100`;
+    return this.db.query(query, params);
+  }
+
+  async updateAssignmentStatus(assignmentId: string, status: string) {
+    await this.db.query(
+      `UPDATE delivery.officer_assignment SET status = $1 WHERE id = $2`,
+      [status, assignmentId],
+    );
+    return { message: 'Updated', assignmentId, status };
+  }
+
+  async removeAssignment(assignmentId: string) {
+    await this.db.query(
+      `DELETE FROM delivery.officer_assignment WHERE id = $1`,
+      [assignmentId],
+    );
+    return { message: 'Removed', assignmentId };
+  }
+
+  async getOfficers() {
+    return this.db.query(
+      `SELECT u.id, u.full_name, u.email, u.region,
+              u.employee_number, r.name as role_name
+       FROM identity.user u
+       JOIN identity.role r ON r.id = u.role_id
+       WHERE u.is_active = true AND u.deleted_at IS NULL
+       ORDER BY u.full_name ASC`,
+    );
+  }
+
+  async createSimpleAssignment(
+    dto: { officerId: string; areaId: string; assignmentDate: string; notes?: string },
+    supervisorId: string,
+  ) {
+    const caseCount = await this.db.query(
+      `SELECT COUNT(*) as count FROM registry.property_case
+       WHERE area_id = $1 AND deleted_at IS NULL`,
+      [dto.areaId],
+    );
+    const area = await this.db.query(
+      `SELECT name, parish FROM gis.area WHERE id = $1`,
+      [dto.areaId],
+    );
+    if (!area[0]) throw new Error('Area not found');
+    const result = await this.db.query(
+      `INSERT INTO delivery.officer_assignment
+         (officer_id, supervisor_id, area_id, assignment_date, total_cases, status, notes)
+       VALUES ($1, $2, $3, $4::date, $5, 'PENDING', $6)
+       RETURNING id, assignment_date, status, total_cases`,
+      [
+        dto.officerId,
+        supervisorId,
+        dto.areaId,
+        dto.assignmentDate,
+        Number(caseCount[0].count),
+        dto.notes || null,
+      ],
+    );
+    return {
+      ...result[0],
+      area_name: area[0].name,
+      parish: area[0].parish,
+    };
+  }
 }
