@@ -1,38 +1,43 @@
-const CACHE = 'valugrid-v1';
-const OFFLINE_QUEUE_KEY = 'vg_delivery_queue';
-
-const CACHE_URLS = [
-  '/dashboard/deliveries',
-  '/offline.html',
-];
+const CACHE = 'valugrid-v2';
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(CACHE_URLS)).catch(() => {})
-  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(clients.claim());
-});
-
-self.addEventListener('fetch', e => {
-  const { request } = e;
-  if (request.method !== 'GET') return;
-  e.respondWith(
-    fetch(request).catch(() => caches.match(request).then(r => r || caches.match('/offline.html')))
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.map(key => caches.delete(key)))
+    ).then(() => clients.claim())
   );
 });
 
-// Background sync — flush queued deliveries when online
-self.addEventListener('sync', e => {
-  if (e.tag === 'vg-sync-deliveries') {
-    e.waitUntil(flushQueue());
+// Only cache static assets — never intercept HTML navigation
+self.addEventListener('fetch', e => {
+  const { request } = e;
+  const url = new URL(request.url);
+
+  // Let all HTML navigation requests go to network
+  if (request.mode === 'navigate') return;
+
+  // Let API calls go to network always
+  if (url.pathname.startsWith('/api/')) return;
+
+  // For static assets only, try cache first
+  if (request.destination === 'script' || request.destination === 'style' || request.destination === 'image') {
+    e.respondWith(
+      caches.match(request).then(cached => cached || fetch(request))
+    );
   }
 });
 
-async function flushQueue() {
-  const clients_list = await self.clients.matchAll();
-  clients_list.forEach(c => c.postMessage({ type: 'VG_SYNC_START' }));
-}
+// Background sync for offline delivery queue
+self.addEventListener('sync', e => {
+  if (e.tag === 'vg-sync-deliveries') {
+    e.waitUntil(
+      self.clients.matchAll().then(clients =>
+        clients.forEach(c => c.postMessage({ type: 'VG_SYNC_START' }))
+      )
+    );
+  }
+});
