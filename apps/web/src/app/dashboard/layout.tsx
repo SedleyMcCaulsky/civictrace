@@ -8,7 +8,7 @@ import { LayoutDashboard, FileText, Truck, DollarSign, ShieldCheck, BarChart3, L
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
   { href: '/dashboard/cases', label: 'Case Registry', icon: FileText, permission: 'cases:read' },
-  { href: '/dashboard/delivery', label: 'Delivery', icon: Truck, permission: 'delivery:read' },
+  { href: '/dashboard/deliveries', label: 'Delivery', icon: Truck, permission: 'delivery:read' },
   { href: '/dashboard/reconciliation', label: 'Reconciliation', icon: DollarSign, permission: 'reconciliation:read' },
   { href: '/dashboard/compliance', label: 'Compliance', icon: ShieldCheck, permission: 'compliance:read' },
   { href: '/dashboard/audit', label: 'Audit', icon: Scale, permission: 'audit:read' },
