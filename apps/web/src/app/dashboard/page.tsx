@@ -1,139 +1,150 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth.store';
-import { FileText, Truck, DollarSign, AlertTriangle } from 'lucide-react';
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'morning';
-  if (h < 17) return 'afternoon';
-  return 'evening';
-}
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
 
   const { data: areas } = useQuery({
     queryKey: ['areas'],
-    queryFn: async () => {
-      const res = await api.get('/cases/areas');
-      return res.data;
-    },
+    queryFn: async () => (await api.get('/cases/areas')).data,
   });
 
   const { data: auditData } = useQuery({
     queryKey: ['audit-summary'],
-    queryFn: async () => {
-      const res = await api.get('/audit/logs?limit=5');
-      return res.data;
-    },
+    queryFn: async () => (await api.get('/audit/logs?limit=5')).data,
   });
 
-  const kpis = [
-    {
-      title: 'Total Areas',
-      value: areas?.length ?? '—',
-      icon: FileText,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      sub: 'Active operational zones',
-    },
-    {
-      title: 'Audit Events',
-      value: auditData?.pagination?.total ?? '—',
-      icon: AlertTriangle,
-      color: 'text-red-600',
-      bg: 'bg-red-50',
-      sub: 'Total logged actions',
-    },
-    {
-      title: 'Deliveries',
-      value: '—',
-      icon: Truck,
-      color: 'text-green-600',
-      bg: 'bg-green-50',
-      sub: 'Field operations today',
-    },
-    {
-      title: 'Reconciliations',
-      value: '—',
-      icon: DollarSign,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-      sub: 'Payment batches processed',
-    },
+  const { data: casesData } = useQuery({
+    queryKey: ['cases-summary'],
+    queryFn: async () => (await api.get('/cases?limit=5')).data,
+  });
+
+  const { data: executive } = useQuery({
+    queryKey: ['executive'],
+    queryFn: async () => (await api.get('/reports/executive')).data,
+  });
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = user?.fullName?.split(' ')[0] || 'Officer';
+
+  const stats = [
+    { label: 'Active Cases', value: executive?.cases?.total_cases || casesData?.pagination?.total || '—', accent: 'blue', sub: 'Property records' },
+    { label: 'Delinquent', value: executive?.cases?.delinquent || '—', accent: 'red', sub: 'Require action' },
+    { label: 'Outstanding', value: executive?.cases?.total_outstanding ? `J$${(Number(executive.cases.total_outstanding)/1000).toFixed(0)}K` : '—', accent: 'amber', sub: 'Total liability' },
+    { label: 'Delivery Rate', value: executive?.deliveries?.delivery_rate ? `${executive.deliveries.delivery_rate}%` : '—', accent: 'green', sub: 'Field success rate' },
+    { label: 'Operational Areas', value: areas?.length || '—', accent: 'blue', sub: 'Active zones' },
+    { label: 'Audit Events', value: auditData?.pagination?.total || '—', accent: 'purple', sub: 'Logged actions' },
+  ];
+
+  const accentColors: Record<string, string> = {
+    blue: 'var(--vg-blue)', green: 'var(--vg-green)',
+    red: '#ff4d5e', amber: '#f59e0b', purple: '#8b5cf6',
+  };
+
+  const quickActions = [
+    { label: 'New Case', href: '/dashboard/cases', icon: '⬡', desc: 'Register property case' },
+    { label: 'Log Delivery', href: '/dashboard/deliveries', icon: '⟳', desc: 'Field delivery outcome' },
+    { label: 'Reconcile', href: '/dashboard/reconciliation', icon: '⇌', desc: 'Payment batch' },
+    { label: 'GIS Map', href: '/dashboard/compliance', icon: '◎', desc: 'Delinquency heatmap' },
+    { label: 'Reports', href: '/dashboard/reports', icon: '▦', desc: 'Generate & export' },
+    { label: 'Audit Trail', href: '/dashboard/audit', icon: '☰', desc: 'Immutable logs' },
   ];
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">
-          Good {getGreeting()}, {user?.fullName?.split(' ')[0]}
-        </h1>
-        <p className="text-slate-500 mt-1">
-          {new Date().toLocaleDateString('en-JM', {
-            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-          })}
-        </p>
+    <div style={{ padding: '2rem 2.5rem' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <p style={{ color: 'var(--vg-text-muted)', fontSize: '0.75rem', letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'Syne, sans-serif', marginBottom: '4px' }}>
+            {greeting}
+          </p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--vg-text)', letterSpacing: '-0.02em', fontFamily: 'Syne, sans-serif' }}>
+            {firstName} <span style={{ color: 'var(--vg-blue)' }}>→</span>
+          </h1>
+          <p style={{ color: 'var(--vg-text-muted)', fontSize: '0.8rem', marginTop: '4px' }}>
+            {new Date().toLocaleDateString('en-JM', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '8px', background: 'rgba(0,214,143,0.06)', border: '1px solid rgba(0,214,143,0.15)' }}>
+          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--vg-green)', animation: 'vg-pulse 2s infinite' }} />
+          <span style={{ color: 'var(--vg-green)', fontSize: '0.7rem', fontFamily: 'Syne, sans-serif', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>System Online</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {kpis.map((kpi) => (
-          <div key={kpi.title} className="bg-white rounded-xl shadow-sm p-6 border border-slate-100">
-            <div className="flex items-center justify-between mb-4">
-              <div className="text-sm font-medium text-slate-600">{kpi.title}</div>
-              <div className={`p-2 rounded-lg ${kpi.bg}`}>
-                <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-slate-800 mb-1">{kpi.value}</div>
-            <div className="text-xs text-slate-400">{kpi.sub}</div>
+      {/* Stats Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '2rem' }}>
+        {stats.map((stat, i) => (
+          <div key={i} className="vg-card" style={{ borderRadius: '12px', padding: '1.25rem', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${accentColors[stat.accent]}, transparent)` }} />
+            <p style={{ color: 'var(--vg-text-muted)', fontSize: '0.65rem', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: 'Syne, sans-serif', marginBottom: '8px' }}>{stat.label}</p>
+            <p className="vg-stat-number" style={{ color: accentColors[stat.accent] || 'var(--vg-text)' }}>{stat.value}</p>
+            <p style={{ color: 'var(--vg-text-muted)', fontSize: '0.7rem', marginTop: '4px' }}>{stat.sub}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100">
-          <h2 className="text-base font-semibold text-slate-800 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <a href="/dashboard/cases" className="flex items-center gap-2 px-4 py-3 bg-slate-800 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
-              <FileText className="h-4 w-4" />
-              Case Registry
-            </a>
-            <a href="/dashboard/delivery" className="flex items-center gap-2 px-4 py-3 bg-slate-800 text-white rounded-lg text-sm hover:bg-slate-700 transition-colors">
-              <Truck className="h-4 w-4" />
-              Log Delivery
-            </a>
-            <a href="/dashboard/reconciliation" className="flex items-center gap-2 px-4 py-3 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
-              <DollarSign className="h-4 w-4" />
-              Reconciliation
-            </a>
-            <a href="/dashboard/audit" className="flex items-center gap-2 px-4 py-3 border border-slate-300 text-slate-700 rounded-lg text-sm hover:bg-slate-50 transition-colors">
-              <AlertTriangle className="h-4 w-4" />
-              Audit Logs
-            </a>
+      {/* Quick Actions + Areas */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        {/* Quick Actions */}
+        <div className="vg-card" style={{ borderRadius: '12px', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
+            <div style={{ width: '3px', height: '18px', background: 'var(--vg-blue)', borderRadius: '2px' }} />
+            <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--vg-text)' }}>Quick Actions</h3>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {quickActions.map((a, i) => (
+              <a key={i} href={a.href} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 12px', borderRadius: '8px',
+                background: 'rgba(255,255,255,0.02)', border: '1px solid var(--vg-border)',
+                textDecoration: 'none', transition: 'all 0.15s',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'rgba(27,110,255,0.3)'; el.style.background = 'rgba(27,110,255,0.06)'; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = 'var(--vg-border)'; el.style.background = 'rgba(255,255,255,0.02)'; }}
+              >
+                <span style={{ fontSize: '1rem', color: 'var(--vg-blue)', flexShrink: 0 }}>{a.icon}</span>
+                <div>
+                  <p style={{ color: 'var(--vg-text)', fontSize: '0.78rem', fontFamily: 'Syne, sans-serif', fontWeight: 600 }}>{a.label}</p>
+                  <p style={{ color: 'var(--vg-text-muted)', fontSize: '0.65rem' }}>{a.desc}</p>
+                </div>
+              </a>
+            ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100">
-          <h2 className="text-base font-semibold text-slate-800 mb-4">Operational Areas</h2>
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {areas?.slice(0, 8).map((area: any) => (
-              <div key={area.id} className="flex items-center justify-between py-2 border-b border-slate-50">
+        {/* Operational Areas */}
+        <div className="vg-card" style={{ borderRadius: '12px', padding: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1.25rem' }}>
+            <div style={{ width: '3px', height: '18px', background: 'var(--vg-green)', borderRadius: '2px' }} />
+            <h3 style={{ fontFamily: 'Syne, sans-serif', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--vg-text)' }}>Operational Areas</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
+            {!areas && <p style={{ color: 'var(--vg-text-muted)', fontSize: '0.8rem' }}>Loading...</p>}
+            {areas?.map((area: any) => (
+              <div key={area.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 10px', borderRadius: '6px',
+                background: 'rgba(255,255,255,0.02)', border: '1px solid var(--vg-border)',
+              }}>
                 <div>
-                  <div className="text-sm font-medium text-slate-700">{area.name}</div>
-                  <div className="text-xs text-slate-400">{area.parish}</div>
+                  <p style={{ color: 'var(--vg-text)', fontSize: '0.78rem', fontFamily: 'Syne, sans-serif', fontWeight: 500 }}>{area.name}</p>
+                  <p style={{ color: 'var(--vg-text-muted)', fontSize: '0.65rem' }}>{area.parish}</p>
                 </div>
-                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded">
-                  {area.region}
-                </span>
+                <span style={{
+                  fontSize: '0.6rem', padding: '2px 8px', borderRadius: '4px',
+                  fontFamily: 'Syne, sans-serif', fontWeight: 600, letterSpacing: '0.08em',
+                  background: area.region === 'SOUTH' ? 'rgba(27,110,255,0.1)' : area.region === 'NORTH' ? 'rgba(0,214,143,0.1)' : 'rgba(245,158,11,0.1)',
+                  color: area.region === 'SOUTH' ? '#6ba7ff' : area.region === 'NORTH' ? 'var(--vg-green)' : '#f59e0b',
+                  border: `1px solid ${area.region === 'SOUTH' ? 'rgba(27,110,255,0.2)' : area.region === 'NORTH' ? 'rgba(0,214,143,0.2)' : 'rgba(245,158,11,0.2)'}`,
+                }}>{area.region}</span>
               </div>
             ))}
-            {!areas && (
-              <div className="text-sm text-slate-400">Loading areas...</div>
-            )}
           </div>
         </div>
       </div>
