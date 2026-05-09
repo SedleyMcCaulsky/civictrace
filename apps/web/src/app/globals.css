@@ -167,3 +167,9 @@ td, th {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Remove table-layout fixed — was causing column stretch */
+table {
+  table-layout: auto !important;
+  width: 100%;
+}

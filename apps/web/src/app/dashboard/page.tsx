@@ -40,7 +40,7 @@ export default function DashboardPage() {
                     { bg:'#FFFBEB', color:'#D97706', border:'#FDE68A' };
 
   return (
-    <div className="vg-page">
+    <div style={{ minHeight:"100vh" }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'1.75rem' }}>
         <div>
