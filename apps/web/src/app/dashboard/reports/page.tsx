@@ -1,202 +1,178 @@
 'use client';
 export const dynamic = 'force-dynamic';
-
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { BarChart3, Download, TrendingUp, Users, FileText, DollarSign } from 'lucide-react';
+import { S, C, F, badge } from '@/lib/styles';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'];
+const TABS = ['executive','outstanding','delivery','payment'] as const;
+const TAB_LABELS = { executive:'Executive', outstanding:'Outstanding', delivery:'Delivery', payment:'Payment' };
+const PIE_COLORS = [C.red, C.amber, '#EAB308', C.green, C.blue, C.purple];
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState<'executive'|'outstanding'|'delivery'|'payment'>('executive');
+  const [tab, setTab] = useState<typeof TABS[number]>('executive');
   const [parish, setParish] = useState('');
-  const [dateFrom, setDateFrom] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0]);
-  const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
+  const [from, setFrom] = useState(new Date(new Date().getFullYear(),0,1).toISOString().split('T')[0]);
+  const [to,   setTo]   = useState(new Date().toISOString().split('T')[0]);
 
-  const { data: executive, isLoading: loadingExec } = useQuery({
-    queryKey: ['executive-report'],
-    queryFn: async () => (await api.get('/reports/executive')).data,
-    enabled: activeTab === 'executive',
-  });
+  const { data: exec }  = useQuery({ queryKey:['rep-exec'],          queryFn: async () => (await api.get('/reports/executive')).data,                                          enabled: tab==='executive' });
+  const { data: out }   = useQuery({ queryKey:['rep-out', parish],   queryFn: async () => (await api.get('/reports/outstanding',       { params:{ parish:parish||undefined } })).data, enabled: tab==='outstanding' });
+  const { data: del }   = useQuery({ queryKey:['rep-del', from, to], queryFn: async () => (await api.get('/reports/delivery/completion',{ params:{ from, to } })).data,        enabled: tab==='delivery' });
+  const { data: pay }   = useQuery({ queryKey:['rep-pay', from, to], queryFn: async () => (await api.get('/reports/payment-conversion', { params:{ from, to } })).data,       enabled: tab==='payment' });
 
-  const { data: outstanding, isLoading: loadingOut } = useQuery({
-    queryKey: ['outstanding-report', parish],
-    queryFn: async () => (await api.get('/reports/outstanding', { params: { parish: parish || undefined } })).data,
-    enabled: activeTab === 'outstanding',
-  });
+  const parishes = ['Kingston','St. Andrew','St. Catherine','Clarendon','Manchester','St. Elizabeth','Westmoreland','Hanover','St. James','Trelawny','St. Ann','St. Mary','Portland','St. Thomas'];
 
-  const { data: delivery, isLoading: loadingDel } = useQuery({
-    queryKey: ['delivery-report', dateFrom, dateTo],
-    queryFn: async () => (await api.get('/reports/delivery/completion', { params: { from: dateFrom, to: dateTo } })).data,
-    enabled: activeTab === 'delivery',
-  });
-
-  const { data: payment, isLoading: loadingPay } = useQuery({
-    queryKey: ['payment-report', dateFrom, dateTo],
-    queryFn: async () => (await api.get('/reports/payment-conversion', { params: { from: dateFrom, to: dateTo } })).data,
-    enabled: activeTab === 'payment',
-  });
-
-  function downloadPDF() {
-    window.open(`https://civictrace-production.up.railway.app/api/v1/reports/outstanding/export/pdf${parish ? `?parish=${parish}` : ''}`, '_blank');
-  }
-
-  function downloadExcel() {
-    window.open(`https://civictrace-production.up.railway.app/api/v1/reports/outstanding/export/excel${parish ? `?parish=${parish}` : ''}`, '_blank');
-  }
-
-  const tabs = [
-    { id: 'executive', label: 'Executive Dashboard', icon: TrendingUp },
-    { id: 'outstanding', label: 'Outstanding Balances', icon: DollarSign },
-    { id: 'delivery', label: 'Delivery Completion', icon: FileText },
-    { id: 'payment', label: 'Payment Conversion', icon: Users },
-  ];
-
-  const parishList = ['Kingston', 'St. Andrew', 'St. Catherine', 'Clarendon', 'Manchester', 'St. Elizabeth', 'Westmoreland', 'Hanover', 'St. James', 'Trelawny', 'St. Ann', 'St. Mary', 'Portland', 'St. Thomas'];
+  const API_BASE = 'https://civictrace-production.up.railway.app/api/v1';
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div style={S.page}>
+      <div style={{ ...S.pageHeader, marginBottom:'1.5rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><BarChart3 className="h-6 w-6" /> Reports</h1>
-          <p className="text-slate-500 text-sm mt-1">Operational intelligence and compliance analytics</p>
+          <h1 style={S.h1}>Reports</h1>
+          <p style={{ ...S.muted, marginTop:'4px' }}>Operational intelligence and compliance analytics</p>
         </div>
-        {(activeTab === 'outstanding') && (
-          <div className="flex gap-2">
-            <button onClick={downloadPDF} className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50">
-              <Download className="h-4 w-4" /> PDF
-            </button>
-            <button onClick={downloadExcel} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg text-sm hover:bg-slate-700">
-              <Download className="h-4 w-4" /> Excel
-            </button>
+        {tab==='outstanding' && (
+          <div style={{ display:'flex', gap:'8px' }}>
+            <button onClick={() => window.open(`${API_BASE}/reports/outstanding/export/pdf${parish?`?parish=${parish}`:''}`, '_blank')} style={S.btnSecondary}>↓ PDF</button>
+            <button onClick={() => window.open(`${API_BASE}/reports/outstanding/export/excel${parish?`?parish=${parish}`:''}`, '_blank')} style={S.btnPrimary}>↓ Excel</button>
           </div>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg mb-6 w-fit">
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <tab.icon className="h-4 w-4" />{tab.label}
+      <div style={{ display:'flex', gap:'2px', background:C.surface, padding:'4px', borderRadius:'10px', width:'fit-content', marginBottom:'1.5rem', border:`1.5px solid ${C.border}` }}>
+        {TABS.map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{ padding:'7px 16px', borderRadius:'7px', fontFamily:F.display, fontWeight:700, fontSize:'0.72rem', letterSpacing:'0.06em', textTransform:'uppercase', border:'none', cursor:'pointer', transition:'all .15s', background: tab===t ? C.card : 'transparent', color: tab===t ? C.blue : C.muted, boxShadow: tab===t ? '0 1px 3px rgba(13,19,38,0.08)' : 'none' }}>
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
 
       {/* Filters */}
-      {activeTab !== 'executive' && (
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6 flex gap-3 flex-wrap">
-          {activeTab === 'outstanding' && (
-            <select value={parish} onChange={e => setParish(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+      {tab !== 'executive' && (
+        <div style={{ ...S.card, padding:'12px 14px', marginBottom:'1.25rem', display:'flex', gap:'10px', alignItems:'center', flexWrap:'wrap' }}>
+          {tab==='outstanding' && (
+            <select value={parish} onChange={e => setParish(e.target.value)} style={{ ...S.input, width:'200px' }}>
               <option value="">All Parishes</option>
-              {parishList.map(p => <option key={p} value={p}>{p}</option>)}
+              {parishes.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           )}
-          {(activeTab === 'delivery' || activeTab === 'payment') && (
+          {(tab==='delivery'||tab==='payment') && (
             <>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
-              <span className="self-center text-slate-400 text-sm">to</span>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
+              <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={{ ...S.input, width:'160px' }} />
+              <span style={S.muted}>to</span>
+              <input type="date" value={to} onChange={e => setTo(e.target.value)} style={{ ...S.input, width:'160px' }} />
             </>
           )}
         </div>
       )}
 
-      {/* EXECUTIVE DASHBOARD */}
-      {activeTab === 'executive' && (
-        <div className="space-y-6">
-          {loadingExec ? <div className="text-slate-400 text-sm">Loading...</div> : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: 'Total Cases', value: executive?.cases?.total_cases || 0, color: 'text-slate-800', bg: 'bg-slate-50' },
-                  { label: 'Delinquent', value: executive?.cases?.delinquent || 0, color: 'text-red-600', bg: 'bg-red-50' },
-                  { label: 'Total Outstanding', value: `J$${Number(executive?.cases?.total_outstanding || 0).toLocaleString()}`, color: 'text-orange-600', bg: 'bg-orange-50' },
-                  { label: 'Delivery Rate', value: `${executive?.deliveries?.delivery_rate || 0}%`, color: 'text-green-600', bg: 'bg-green-50' },
-                ].map(s => (
-                  <div key={s.label} className={`${s.bg} rounded-xl p-5`}>
-                    <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                    <div className="text-xs text-slate-500 mt-1">{s.label}</div>
-                  </div>
-                ))}
+      {/* Executive */}
+      {tab==='executive' && exec && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px' }}>
+            {[
+              { label:'Total Cases',    value: exec.cases?.total_cases   ?? 0,  color:C.blue,  bg:C.blueBg,  bd:C.blueBd },
+              { label:'Delinquent',     value: exec.cases?.delinquent    ?? 0,  color:C.red,   bg:C.redBg,   bd:C.redBd },
+              { label:'Outstanding',    value: `J$${Number(exec.cases?.total_outstanding||0).toLocaleString()}`, color:C.amber, bg:C.amberBg, bd:C.amberBd },
+              { label:'Delivery Rate',  value: `${exec.deliveries?.delivery_rate||0}%`, color:C.green, bg:C.greenBg, bd:C.greenBd },
+            ].map(s => (
+              <div key={s.label} style={{ background:s.bg, border:`1.5px solid ${s.bd}`, borderRadius:'10px', padding:'12px 16px' }}>
+                <p style={S.statLabel}>{s.label}</p>
+                <p style={{ ...S.statNum, color:s.color }}>{s.value}</p>
               </div>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: 'Total Deliveries', value: executive?.deliveries?.total_deliveries || 0, color: 'text-slate-800', bg: 'bg-slate-50' },
-                  { label: 'Delivered', value: executive?.deliveries?.delivered || 0, color: 'text-green-600', bg: 'bg-green-50' },
-                  { label: 'Reconciled Amount', value: `J$${Number(executive?.reconciliation?.total_reconciled || 0).toLocaleString()}`, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { label: 'Match Rate', value: `${executive?.reconciliation?.avg_match_rate || 0}%`, color: 'text-purple-600', bg: 'bg-purple-50' },
-                ].map(s => (
-                  <div key={s.label} className={`${s.bg} rounded-xl p-5`}>
-                    <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                    <div className="text-xs text-slate-500 mt-1">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-
-              {executive?.topAreas?.length > 0 && (
-                <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-6">
-                  <h2 className="text-base font-semibold text-slate-800 mb-4">Top Areas by Outstanding Balance</h2>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={executive.topAreas.map((a: any) => ({ name: a.name, outstanding: Number(a.outstanding || 0), cases: Number(a.case_count || 0) }))}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                      <YAxis tick={{ fontSize: 10 }} />
-                      <Tooltip formatter={(v: any) => `J$${Number(v).toLocaleString()}`} />
-                      <Bar dataKey="outstanding" fill="#1e293b" radius={[4,4,0,0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </>
+            ))}
+          </div>
+          {exec.topAreas?.length > 0 && (
+            <div style={{ ...S.card, padding:'1.25rem' }}>
+              <h3 style={{ ...S.h3, marginBottom:'1rem' }}>Top Areas by Outstanding Balance</h3>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={exec.topAreas.map((a: any) => ({ name:a.name, outstanding:Number(a.outstanding||0) }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                  <XAxis dataKey="name" tick={{ fontSize:11, fill:C.muted, fontFamily:F.body }} />
+                  <YAxis tick={{ fontSize:11, fill:C.muted, fontFamily:F.body }} />
+                  <Tooltip formatter={(v: any) => `J$${Number(v).toLocaleString()}`} />
+                  <Bar dataKey="outstanding" fill={C.blue} radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </div>
       )}
 
-      {/* OUTSTANDING BALANCES */}
-      {activeTab === 'outstanding' && (
-        <div className="space-y-6">
-          {loadingOut ? <div className="text-slate-400 text-sm">Loading...</div> : (
-            <>
-              <div className="grid grid-cols-3 gap-4">
-                {[
-                  { label: 'Total Cases', value: outstanding?.totals?.total_cases || 0, color: 'text-slate-800', bg: 'bg-slate-50' },
-                  { label: 'Delinquent', value: outstanding?.totals?.delinquent_count || 0, color: 'text-red-600', bg: 'bg-red-50' },
-                  { label: 'Grand Total Outstanding', value: `J$${Number(outstanding?.totals?.grand_total || 0).toLocaleString()}`, color: 'text-orange-600', bg: 'bg-orange-50' },
-                ].map(s => (
-                  <div key={s.label} className={`${s.bg} rounded-xl p-5`}>
-                    <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                    <div className="text-xs text-slate-500 mt-1">{s.label}</div>
-                  </div>
-                ))}
+      {/* Outstanding */}
+      {tab==='outstanding' && out && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px' }}>
+            {[
+              { label:'Total Cases',    value: out.totals?.total_cases      ?? 0, color:C.blue,  bg:C.blueBg,  bd:C.blueBd },
+              { label:'Delinquent',     value: out.totals?.delinquent_count ?? 0, color:C.red,   bg:C.redBg,   bd:C.redBd },
+              { label:'Grand Total',    value: `J$${Number(out.totals?.grand_total||0).toLocaleString()}`, color:C.amber, bg:C.amberBg, bd:C.amberBd },
+            ].map(s => (
+              <div key={s.label} style={{ background:s.bg, border:`1.5px solid ${s.bd}`, borderRadius:'10px', padding:'12px 16px' }}>
+                <p style={S.statLabel}>{s.label}</p>
+                <p style={{ ...S.statNum, color:s.color }}>{s.value}</p>
               </div>
+            ))}
+          </div>
+          <div style={{ ...S.card, overflow:'hidden' }}>
+            <table>
+              <thead><tr>{['Area','Parish','Cases','Delinquent','Total Outstanding','Avg Outstanding'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {out.byArea?.length===0 && <tr><td colSpan={6} style={{ ...S.td, textAlign:'center', padding:'3rem', color:C.muted }}>No data.</td></tr>}
+                {out.byArea?.map((r: any) => (
+                  <tr key={r.area_name} onMouseEnter={e => (e.currentTarget.style.background=C.surface)} onMouseLeave={e => (e.currentTarget.style.background='')}>
+                    <td style={{ ...S.td, fontFamily:F.display, fontWeight:600 }}>{r.area_name}</td>
+                    <td style={S.tdMuted}>{r.parish}</td>
+                    <td style={S.td}>{r.total_cases}</td>
+                    <td style={{ ...S.td, color:C.red, fontFamily:F.display, fontWeight:700 }}>{r.delinquent_cases}</td>
+                    <td style={{ ...S.td, fontFamily:F.display, fontWeight:700, color:C.amber }}>J${Number(r.total_outstanding||0).toLocaleString()}</td>
+                    <td style={S.tdMuted}>J${Number(r.avg_outstanding||0).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-              <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b"><tr>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Area</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Parish</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Cases</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Delinquent</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Total Outstanding</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Avg Outstanding</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {outstanding?.byArea?.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400 text-sm">No data found.</td></tr>}
-                    {outstanding?.byArea?.map((row: any) => (
-                      <tr key={row.area_name} className="hover:bg-slate-50">
-                        <td className="px-6 py-3 text-sm font-medium text-slate-800">{row.area_name}</td>
-                        <td className="px-6 py-3 text-sm text-slate-600">{row.parish}</td>
-                        <td className="px-6 py-3 text-sm text-right">{row.total_cases}</td>
-                        <td className="px-6 py-3 text-sm text-right text-red-600 font-medium">{row.delinquent_cases}</td>
-                        <td className="px-6 py-3 text-sm text-right font-bold text-orange-600">J${Number(row.total_outstanding || 0).toLocaleString()}</td>
-                        <td className="px-6 py-3 text-sm text-right text-slate-600">J${Number(row.avg_outstanding || 0).toLocaleString()}</td>
+      {/* Delivery */}
+      {tab==='delivery' && del && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+          {(!del.byArea?.length && !del.byOfficer?.length) ? (
+            <div style={{ ...S.card, padding:'3rem', textAlign:'center' }}><p style={S.muted}>No delivery data for this period.</p></div>
+          ) : (
+            <>
+              <div style={{ ...S.card, overflow:'hidden' }}>
+                <div style={{ padding:'1rem 1.25rem', borderBottom:`1.5px solid ${C.border}` }}><h3 style={S.h3}>By Area</h3></div>
+                <table>
+                  <thead><tr>{['Area','Total','Delivered','Absent','Refused','Rate'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {del.byArea?.map((r: any) => (
+                      <tr key={r.area_name} onMouseEnter={e => (e.currentTarget.style.background=C.surface)} onMouseLeave={e => (e.currentTarget.style.background='')}>
+                        <td style={{ ...S.td, fontFamily:F.display, fontWeight:600 }}>{r.area_name} — {r.parish}</td>
+                        <td style={S.td}>{r.total_deliveries}</td>
+                        <td style={{ ...S.td, color:C.green, fontFamily:F.display, fontWeight:700 }}>{r.delivered}</td>
+                        <td style={{ ...S.td, color:C.amber }}>{r.owner_absent}</td>
+                        <td style={{ ...S.td, color:C.red }}>{r.refused}</td>
+                        <td style={{ ...S.td, fontFamily:F.display, fontWeight:800, color:C.blue }}>{r.delivery_rate}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ ...S.card, overflow:'hidden' }}>
+                <div style={{ padding:'1rem 1.25rem', borderBottom:`1.5px solid ${C.border}` }}><h3 style={S.h3}>By Officer</h3></div>
+                <table>
+                  <thead><tr>{['Officer','Total','Delivered','Rate'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {del.byOfficer?.map((r: any) => (
+                      <tr key={r.officer_name} onMouseEnter={e => (e.currentTarget.style.background=C.surface)} onMouseLeave={e => (e.currentTarget.style.background='')}>
+                        <td style={{ ...S.td, fontFamily:F.display, fontWeight:600 }}>{r.officer_name}</td>
+                        <td style={S.td}>{r.total}</td>
+                        <td style={{ ...S.td, color:C.green, fontFamily:F.display, fontWeight:700 }}>{r.delivered}</td>
+                        <td style={{ ...S.td, fontFamily:F.display, fontWeight:800, color:C.blue }}>{r.rate}%</td>
                       </tr>
                     ))}
                   </tbody>
@@ -207,115 +183,40 @@ export default function ReportsPage() {
         </div>
       )}
 
-      {/* DELIVERY COMPLETION */}
-      {activeTab === 'delivery' && (
-        <div className="space-y-6">
-          {loadingDel ? <div className="text-slate-400 text-sm">Loading...</div> : (
-            <>
-              {delivery?.byArea?.length === 0 && delivery?.byOfficer?.length === 0 ? (
-                <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-12 text-center text-slate-400 text-sm">No delivery data for this period.</div>
-              ) : (
-                <>
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b"><h2 className="text-base font-semibold text-slate-800">By Area</h2></div>
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-b"><tr>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Area</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Total</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Delivered</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Absent</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Refused</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Rate</th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {delivery?.byArea?.map((row: any) => (
-                          <tr key={row.area_name} className="hover:bg-slate-50">
-                            <td className="px-6 py-3 text-sm font-medium text-slate-800">{row.area_name} — {row.parish}</td>
-                            <td className="px-6 py-3 text-sm text-right">{row.total_deliveries}</td>
-                            <td className="px-6 py-3 text-sm text-right text-green-600 font-medium">{row.delivered}</td>
-                            <td className="px-6 py-3 text-sm text-right text-yellow-600">{row.owner_absent}</td>
-                            <td className="px-6 py-3 text-sm text-right text-red-600">{row.refused}</td>
-                            <td className="px-6 py-3 text-sm text-right font-bold">{row.delivery_rate}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b"><h2 className="text-base font-semibold text-slate-800">By Officer</h2></div>
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-b"><tr>
-                        <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Officer</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Total</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Delivered</th>
-                        <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Rate</th>
-                      </tr></thead>
-                      <tbody className="divide-y divide-slate-50">
-                        {delivery?.byOfficer?.map((row: any) => (
-                          <tr key={row.officer_name} className="hover:bg-slate-50">
-                            <td className="px-6 py-3 text-sm font-medium text-slate-800">{row.officer_name}</td>
-                            <td className="px-6 py-3 text-sm text-right">{row.total}</td>
-                            <td className="px-6 py-3 text-sm text-right text-green-600 font-medium">{row.delivered}</td>
-                            <td className="px-6 py-3 text-sm text-right font-bold">{row.rate}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* PAYMENT CONVERSION */}
-      {activeTab === 'payment' && (
-        <div className="space-y-6">
-          {loadingPay ? <div className="text-slate-400 text-sm">Loading...</div> : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: 'Total Records', value: payment?.summary?.total_records || 0, color: 'text-slate-800', bg: 'bg-slate-50' },
-                  { label: 'Matched', value: payment?.summary?.total_matched || 0, color: 'text-green-600', bg: 'bg-green-50' },
-                  { label: 'Total Amount', value: `J$${Number(payment?.summary?.total_amount || 0).toLocaleString()}`, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { label: 'Match Rate', value: `${payment?.summary?.overall_match_rate || 0}%`, color: 'text-purple-600', bg: 'bg-purple-50' },
-                ].map(s => (
-                  <div key={s.label} className={`${s.bg} rounded-xl p-5`}>
-                    <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                    <div className="text-xs text-slate-500 mt-1">{s.label}</div>
-                  </div>
+      {/* Payment */}
+      {tab==='payment' && pay && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px' }}>
+            {[
+              { label:'Total Records', value: pay.summary?.total_records  ?? 0, color:C.blue,  bg:C.blueBg,  bd:C.blueBd },
+              { label:'Matched',       value: pay.summary?.total_matched  ?? 0, color:C.green, bg:C.greenBg, bd:C.greenBd },
+              { label:'Total Amount',  value: `J$${Number(pay.summary?.total_amount||0).toLocaleString()}`, color:C.blue, bg:C.blueBg, bd:C.blueBd },
+              { label:'Match Rate',    value: `${pay.summary?.overall_match_rate||0}%`, color:C.purple, bg:C.purpleBg, bd:C.purpleBd },
+            ].map(s => (
+              <div key={s.label} style={{ background:s.bg, border:`1.5px solid ${s.bd}`, borderRadius:'10px', padding:'12px 16px' }}>
+                <p style={S.statLabel}>{s.label}</p>
+                <p style={{ ...S.statNum, color:s.color }}>{s.value}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ ...S.card, overflow:'hidden' }}>
+            <table>
+              <thead><tr>{['Batch Reference','Period','Records','Matched','Amount','Match Rate'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>
+                {pay.batches?.length===0 && <tr><td colSpan={6} style={{ ...S.td, textAlign:'center', padding:'3rem', color:C.muted }}>No batches.</td></tr>}
+                {pay.batches?.map((b: any) => (
+                  <tr key={b.batch_reference} onMouseEnter={e => (e.currentTarget.style.background=C.surface)} onMouseLeave={e => (e.currentTarget.style.background='')}>
+                    <td style={{ ...S.td, fontFamily:F.display, fontWeight:700 }}>{b.batch_reference}</td>
+                    <td style={S.tdMuted}>{b.report_period_start} → {b.report_period_end}</td>
+                    <td style={S.td}>{b.total_records}</td>
+                    <td style={{ ...S.td, color:C.green, fontFamily:F.display, fontWeight:700 }}>{b.matched_count}</td>
+                    <td style={{ ...S.td, fontFamily:F.display, fontWeight:700 }}>J${Number(b.total_amount||0).toLocaleString()}</td>
+                    <td style={{ ...S.td, fontFamily:F.display, fontWeight:800, color:C.blue }}>{b.match_rate}%</td>
+                  </tr>
                 ))}
-              </div>
-
-              <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-slate-50 border-b"><tr>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Batch Reference</th>
-                    <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Period</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Records</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Matched</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Amount</th>
-                    <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Match Rate</th>
-                  </tr></thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {payment?.batches?.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400 text-sm">No batches found.</td></tr>}
-                    {payment?.batches?.map((b: any) => (
-                      <tr key={b.batch_reference} className="hover:bg-slate-50">
-                        <td className="px-6 py-3 text-sm font-mono text-slate-800">{b.batch_reference}</td>
-                        <td className="px-6 py-3 text-sm text-slate-600">{b.report_period_start} → {b.report_period_end}</td>
-                        <td className="px-6 py-3 text-sm text-right">{b.total_records}</td>
-                        <td className="px-6 py-3 text-sm text-right text-green-600 font-medium">{b.matched_count}</td>
-                        <td className="px-6 py-3 text-sm text-right font-medium">J${Number(b.total_amount || 0).toLocaleString()}</td>
-                        <td className="px-6 py-3 text-sm text-right font-bold">{b.match_rate}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

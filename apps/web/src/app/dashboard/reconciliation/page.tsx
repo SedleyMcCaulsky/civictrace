@@ -1,16 +1,14 @@
 'use client';
 export const dynamic = 'force-dynamic';
-
-
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { DollarSign, Plus, X } from 'lucide-react';
+import { S, C, F, badge } from '@/lib/styles';
 
 export default function ReconciliationPage() {
+  const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
-  const [rows, setRows] = useState([{ rawAreaCode: '', rawValuationNumber: '', amountPaid: '', paymentDate: '', yearsCovered: '' }]);
+  const [rows, setRows] = useState([{ rawAreaCode:'', rawValuationNumber:'', amountPaid:'', paymentDate:'', yearsCovered:'' }]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
 
@@ -19,72 +17,55 @@ export default function ReconciliationPage() {
     queryFn: async () => (await api.get('/reconciliation/batches')).data,
   });
 
-  function addRow() { setRows(r => [...r, { rawAreaCode: '', rawValuationNumber: '', amountPaid: '', paymentDate: '', yearsCovered: '' }]); }
-  function updateRow(i: number, field: string, value: string) { setRows(r => r.map((row, idx) => idx === i ? { ...row, [field]: value } : row)); }
-  function removeRow(i: number) { setRows(r => r.filter((_, idx) => idx !== i)); }
+  const addRow = () => setRows(r => [...r, { rawAreaCode:'', rawValuationNumber:'', amountPaid:'', paymentDate:'', yearsCovered:'' }]);
+  const upd = (i: number, k: string, v: string) => setRows(r => r.map((row,idx) => idx===i ? {...row,[k]:v} : row));
 
-  async function submitBatch() {
+  async function submit() {
     setSubmitting(true);
     try {
-      const payload = {
-        batchReference: `BATCH-${Date.now()}`,
-        reportPeriodStart: rows[0]?.paymentDate || new Date().toISOString().split('T')[0],
-        reportPeriodEnd: new Date().toISOString().split('T')[0],
-        records: rows.map(r => ({
-          rawAreaCode: r.rawAreaCode,
-          rawValuationNumber: r.rawValuationNumber,
-          amountPaid: parseFloat(r.amountPaid),
-          paymentDate: r.paymentDate,
-          yearsCovered: r.yearsCovered.split(',').map(y => parseInt(y.trim())).filter(Boolean),
-        })),
-      };
+      const payload = { batchReference:`BATCH-${Date.now()}`, reportPeriodStart: rows[0]?.paymentDate || new Date().toISOString().split('T')[0], reportPeriodEnd: new Date().toISOString().split('T')[0], records: rows.map(r => ({ rawAreaCode:r.rawAreaCode, rawValuationNumber:r.rawValuationNumber, amountPaid:parseFloat(r.amountPaid), paymentDate:r.paymentDate, yearsCovered:r.yearsCovered.split(',').map(y => parseInt(y.trim())).filter(Boolean) })) };
       const res = await api.post('/reconciliation/batch', payload);
-      setResult(res.data);
-      refetch();
-      setShowForm(false);
-      setRows([{ rawAreaCode: '', rawValuationNumber: '', amountPaid: '', paymentDate: '', yearsCovered: '' }]);
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to submit batch');
-    } finally { setSubmitting(false); }
+      setResult(res.data); refetch(); setShowForm(false);
+      setRows([{ rawAreaCode:'', rawValuationNumber:'', amountPaid:'', paymentDate:'', yearsCovered:'' }]);
+    } catch (e: any) { alert(e.response?.data?.message || 'Failed'); }
+    finally { setSubmitting(false); }
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div><h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><DollarSign className="h-6 w-6" /> Payment Reconciliation</h1><p className="text-slate-500 text-sm mt-1">Match payments against property cases</p></div>
-        <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700"><Plus className="h-4 w-4" /> New Batch</button>
+    <div style={S.page}>
+      <div style={{ ...S.pageHeader, marginBottom:'1.5rem' }}>
+        <div>
+          <h1 style={S.h1}>Payment Reconciliation</h1>
+          <p style={{ ...S.muted, marginTop:'4px' }}>Match payments against property cases</p>
+        </div>
+        <button onClick={() => setShowForm(true)} style={S.btnPrimary}>+ New Batch</button>
       </div>
 
       {result && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-          <div className="font-semibold text-green-800">Batch Submitted: {result.batchReference}</div>
-          <div className="text-sm text-green-700 mt-1">Matched: {result.matched} / {result.totalRecords} — Unmatched rate: {result.unmatchedRate}</div>
+        <div style={{ background:C.greenBg, border:`1px solid ${C.greenBd}`, borderRadius:'10px', padding:'12px 16px', marginBottom:'1.25rem' }}>
+          <p style={{ fontFamily:F.display, fontWeight:700, fontSize:'0.85rem', color:C.green, margin:'0 0 3px' }}>Batch Submitted: {result.batchReference}</p>
+          <p style={{ ...S.muted }}>Matched: {result.matched} / {result.totalRecords} — Unmatched rate: {result.unmatchedRate}</p>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b"><h2 className="text-base font-semibold text-slate-800">Recent Batches</h2></div>
-        {!batches || batches.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-sm">No batches yet.</div>
+      <div style={{ ...S.card, overflow:'hidden' }}>
+        <div style={{ padding:'1rem 1.25rem', borderBottom:`1.5px solid ${C.border}` }}><h3 style={S.h3}>Recent Batches</h3></div>
+        {!batches || batches.length===0 ? (
+          <p style={{ ...S.muted, padding:'3rem', textAlign:'center' }}>No batches yet.</p>
         ) : (
-          <table className="w-full">
-            <thead className="bg-slate-50 border-b"><tr>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Reference</th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Period</th>
-              <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Records</th>
-              <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Matched</th>
-              <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Amount</th>
-              <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
+          <table>
+            <thead><tr>
+              {['Reference','Period','Records','Matched','Amount','Status'].map(h => <th key={h} style={S.th}>{h}</th>)}
             </tr></thead>
-            <tbody className="divide-y divide-slate-50">
+            <tbody>
               {batches.map((b: any) => (
-                <tr key={b.id} className="hover:bg-slate-50">
-                  <td className="px-6 py-3 text-sm font-mono text-slate-800">{b.batch_reference}</td>
-                  <td className="px-6 py-3 text-sm text-slate-500">{b.report_period_start} → {b.report_period_end}</td>
-                  <td className="px-6 py-3 text-sm text-right">{b.total_records}</td>
-                  <td className="px-6 py-3 text-sm text-right text-green-600 font-medium">{b.matched_count}</td>
-                  <td className="px-6 py-3 text-sm text-right font-medium">J${Number(b.total_amount || 0).toLocaleString()}</td>
-                  <td className="px-6 py-3"><span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">{b.status}</span></td>
+                <tr key={b.id} onMouseEnter={e => (e.currentTarget.style.background=C.surface)} onMouseLeave={e => (e.currentTarget.style.background='')}>
+                  <td style={{ ...S.td, fontFamily:F.display, fontWeight:700 }}>{b.batch_reference}</td>
+                  <td style={S.tdMuted}>{b.report_period_start} → {b.report_period_end}</td>
+                  <td style={S.td}>{b.total_records}</td>
+                  <td style={{ ...S.td, color:C.green, fontFamily:F.display, fontWeight:700 }}>{b.matched_count}</td>
+                  <td style={{ ...S.td, fontFamily:F.display, fontWeight:700 }}>J${Number(b.total_amount||0).toLocaleString()}</td>
+                  <td style={S.td}><span style={badge('green')}>{b.status}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -93,42 +74,37 @@ export default function ReconciliationPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-bold text-slate-800">New Reconciliation Batch</h2>
-              <button onClick={() => setShowForm(false)}><X className="h-5 w-5 text-slate-400" /></button>
+        <div style={{ position:'fixed', inset:0, background:'rgba(13,19,38,0.5)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, padding:'1rem' }}>
+          <div style={{ ...S.card, width:'100%', maxWidth:'860px', maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:`1.5px solid ${C.border}` }}>
+              <h2 style={S.h2}>New Reconciliation Batch</h2>
+              <button onClick={() => setShowForm(false)} style={{ background:C.surface, border:`1.5px solid ${C.border}`, borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'1.1rem', color:C.muted, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
             </div>
-            <div className="p-6">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead><tr className="border-b">
-                    <th className="text-left py-2 px-2 text-xs text-slate-500">Area Code</th>
-                    <th className="text-left py-2 px-2 text-xs text-slate-500">Valuation No.</th>
-                    <th className="text-left py-2 px-2 text-xs text-slate-500">Amount Paid</th>
-                    <th className="text-left py-2 px-2 text-xs text-slate-500">Payment Date</th>
-                    <th className="text-left py-2 px-2 text-xs text-slate-500">Years (comma separated)</th>
-                    <th></th>
-                  </tr></thead>
-                  <tbody>
-                    {rows.map((row, i) => (
-                      <tr key={i} className="border-b border-slate-50">
-                        <td className="py-1 px-2"><input value={row.rawAreaCode} onChange={e => updateRow(i, 'rawAreaCode', e.target.value)} placeholder="NORBROOK" className="w-full px-2 py-1 border border-slate-200 rounded text-sm" /></td>
-                        <td className="py-1 px-2"><input value={row.rawValuationNumber} onChange={e => updateRow(i, 'rawValuationNumber', e.target.value)} placeholder="105C-2W-06-038" className="w-full px-2 py-1 border border-slate-200 rounded text-sm" /></td>
-                        <td className="py-1 px-2"><input type="number" value={row.amountPaid} onChange={e => updateRow(i, 'amountPaid', e.target.value)} placeholder="45000" className="w-full px-2 py-1 border border-slate-200 rounded text-sm" /></td>
-                        <td className="py-1 px-2"><input type="date" value={row.paymentDate} onChange={e => updateRow(i, 'paymentDate', e.target.value)} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" /></td>
-                        <td className="py-1 px-2"><input value={row.yearsCovered} onChange={e => updateRow(i, 'yearsCovered', e.target.value)} placeholder="2023, 2024" className="w-full px-2 py-1 border border-slate-200 rounded text-sm" /></td>
-                        <td className="py-1 px-2"><button onClick={() => removeRow(i)} className="text-red-400 hover:text-red-600"><X className="h-4 w-4" /></button></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex gap-3 mt-4">
-                <button onClick={addRow} className="px-4 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50">+ Add Row</button>
-                <button onClick={submitBatch} disabled={submitting} className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50">
-                  {submitting ? 'Submitting...' : 'Submit Batch'}
-                </button>
+            <div style={{ padding:'1.5rem', overflowX:'auto' }}>
+              <table style={{ minWidth:'700px' }}>
+                <thead><tr>
+                  {['Area Code','Valuation No.','Amount Paid','Payment Date','Years (comma-sep)',''].map(h => <th key={h} style={{ ...S.th, padding:'8px 10px' }}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {rows.map((row,i) => (
+                    <tr key={i}>
+                      {['rawAreaCode','rawValuationNumber','amountPaid','paymentDate','yearsCovered'].map(k => (
+                        <td key={k} style={{ padding:'6px 8px', borderBottom:'none' }}>
+                          <input value={(row as any)[k]} onChange={e => upd(i,k,e.target.value)}
+                            type={k==='amountPaid' ? 'number' : k==='paymentDate' ? 'date' : 'text'}
+                            placeholder={k==='rawAreaCode' ? 'NORBROOK' : k==='yearsCovered' ? '2023, 2024' : ''} style={S.input} />
+                        </td>
+                      ))}
+                      <td style={{ padding:'6px 8px', borderBottom:'none' }}>
+                        <button onClick={() => setRows(r => r.filter((_,idx) => idx!==i))} style={{ background:'transparent', border:`1px solid ${C.redBd}`, borderRadius:'6px', color:C.red, fontSize:'0.7rem', fontFamily:F.display, fontWeight:700, padding:'4px 10px', cursor:'pointer' }}>×</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ display:'flex', gap:'10px', marginTop:'1rem' }}>
+                <button onClick={addRow} style={S.btnSecondary}>+ Add Row</button>
+                <button onClick={submit} disabled={submitting} style={{ ...S.btnPrimary, opacity: submitting ? .55:1 }}>{submitting ? 'Submitting…' : 'Submit Batch'}</button>
               </div>
             </div>
           </div>
