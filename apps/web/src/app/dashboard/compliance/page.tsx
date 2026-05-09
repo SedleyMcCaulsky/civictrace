@@ -4,197 +4,154 @@ export const dynamic = 'force-dynamic';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { ShieldCheck, Map, BarChart3 } from 'lucide-react';
+import { S, C, F, badge, badgeForStatus } from '@/lib/styles';
 
-const RISK_COLORS: Record<string, string> = {
-  CRITICAL: '#dc2626',
-  HIGH: '#ea580c',
-  MEDIUM: '#ca8a04',
-  LOW: '#16a34a',
-  UNKNOWN: '#94a3b8',
+const RISK_COLOR: Record<string,string> = {
+  CRITICAL:'#E53E3E', HIGH:'#EA580C', MEDIUM:'#D97706', LOW:'#059669', UNKNOWN:'#94A3B8'
 };
 
-const PARISH_COORDS: Record<string, [number, number]> = {
-  'Kingston': [17.9977, -76.7936],
-  'St. Andrew': [18.0747, -76.7444],
-  'St. Catherine': [17.9900, -77.0000],
-  'Clarendon': [17.9500, -77.2500],
-  'Manchester': [18.0500, -77.5000],
-  'St. Elizabeth': [18.0000, -77.7500],
-  'Westmoreland': [18.2500, -78.1500],
-  'Hanover': [18.4000, -78.1300],
-  'St. James': [18.4700, -77.9200],
-  'Trelawny': [18.3500, -77.6000],
-  'St. Ann': [18.4300, -77.2000],
-  'St. Mary': [18.3000, -76.9000],
-  'Portland': [18.1700, -76.4500],
-  'St. Thomas': [17.9500, -76.3500],
+const PARISH_COORDS: Record<string,[number,number]> = {
+  'Kingston':[17.9977,-76.7936],'St. Andrew':[18.0747,-76.7444],'St. Catherine':[17.99,-77.0],
+  'Clarendon':[17.95,-77.25],'Manchester':[18.05,-77.5],'St. Elizabeth':[18.0,-77.75],
+  'Westmoreland':[18.25,-78.15],'Hanover':[18.4,-78.13],'St. James':[18.47,-77.92],
+  'Trelawny':[18.35,-77.6],'St. Ann':[18.43,-77.2],'St. Mary':[18.3,-76.9],
+  'Portland':[18.17,-76.45],'St. Thomas':[17.95,-76.35],
 };
 
 export default function CompliancePage() {
-  const [activeTab, setActiveTab] = useState<'map'|'analytics'>('map');
+  const [tab, setTab] = useState<'map'|'analytics'>('map');
   const [MapComponents, setMapComponents] = useState<any>(null);
 
   const { data: cases } = useQuery({
     queryKey: ['compliance-cases'],
-    queryFn: async () => (await api.get('/cases', { params: { limit: 100 } })).data,
+    queryFn: async () => (await api.get('/cases', { params:{ limit:100 } })).data,
   });
 
   const list = cases?.data || [];
 
-  // Load Leaflet dynamically (SSR-safe)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    Promise.all([
-      import('react-leaflet'),
-      import('leaflet'),
-    ]).then(([rl, L]) => {
-      // Fix default marker icons
+    Promise.all([import('react-leaflet'), import('leaflet')]).then(([rl, L]) => {
       delete (L.default.Icon.Default.prototype as any)._getIconUrl;
       L.default.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconRetinaUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
       });
       setMapComponents({ ...rl, L: L.default });
     });
   }, []);
 
-  // Group cases by parish for heatmap
   const byParish = list.reduce((acc: any, c: any) => {
-    const parish = c.parish || c.area_name || 'Unknown';
-    if (!acc[parish]) acc[parish] = { parish, cases: 0, outstanding: 0, delinquent: 0, coords: PARISH_COORDS[parish] };
-    acc[parish].cases++;
-    acc[parish].outstanding += Number(c.total_outstanding || 0);
-    if (c.compliance_status === 'DELINQUENT') acc[parish].delinquent++;
+    const p = c.parish || c.area_name || 'Unknown';
+    if (!acc[p]) acc[p] = { parish:p, cases:0, outstanding:0, delinquent:0, coords:PARISH_COORDS[p] };
+    acc[p].cases++;
+    acc[p].outstanding += Number(c.total_outstanding||0);
+    if (c.compliance_status==='DELINQUENT') acc[p].delinquent++;
     return acc;
   }, {});
 
   const parishData = Object.values(byParish) as any[];
-  const maxOutstanding = Math.max(...parishData.map((p: any) => p.outstanding), 1);
+  const maxOut = Math.max(...parishData.map((p: any) => p.outstanding), 1);
 
-  // Stats
-  const delinquent = list.filter((c: any) => c.compliance_status === 'DELINQUENT').length;
-  const critical = list.filter((c: any) => c.risk_level === 'CRITICAL').length;
-  const high = list.filter((c: any) => c.risk_level === 'HIGH').length;
-  const totalOutstanding = list.reduce((s: number, c: any) => s + Number(c.total_outstanding || 0), 0);
-
-  const getRiskColor = (outstanding: number) => {
-    const ratio = outstanding / maxOutstanding;
-    if (ratio > 0.8) return RISK_COLORS.CRITICAL;
-    if (ratio > 0.5) return RISK_COLORS.HIGH;
-    if (ratio > 0.2) return RISK_COLORS.MEDIUM;
-    if (ratio > 0) return RISK_COLORS.LOW;
-    return RISK_COLORS.UNKNOWN;
+  const riskColor = (out: number) => {
+    const r = out / maxOut;
+    return r > 0.8 ? RISK_COLOR.CRITICAL : r > 0.5 ? RISK_COLOR.HIGH : r > 0.2 ? RISK_COLOR.MEDIUM : out > 0 ? RISK_COLOR.LOW : RISK_COLOR.UNKNOWN;
   };
 
+  const riskLabel = (out: number) => {
+    const r = out / maxOut;
+    return r > 0.8 ? 'CRITICAL' : r > 0.5 ? 'HIGH' : r > 0.2 ? 'MEDIUM' : out > 0 ? 'LOW' : 'NONE';
+  };
+
+  const stats = [
+    { label:'Total Cases',      value: list.length,                                                color:C.blue,  bg:C.blueBg,  bd:C.blueBd },
+    { label:'Delinquent',       value: list.filter((c: any) => c.compliance_status==='DELINQUENT').length, color:C.red,   bg:C.redBg,   bd:C.redBd },
+    { label:'Critical Risk',    value: list.filter((c: any) => c.risk_level==='CRITICAL').length,  color:C.red,   bg:C.redBg,   bd:C.redBd },
+    { label:'Total Outstanding',value: `J$${list.reduce((s: number, c: any) => s + Number(c.total_outstanding||0), 0).toLocaleString()}`, color:C.amber, bg:C.amberBg, bd:C.amberBd },
+  ];
+
+  const LEGEND = [
+    { label:'Critical (>80%)', color:RISK_COLOR.CRITICAL },
+    { label:'High (>50%)',     color:RISK_COLOR.HIGH },
+    { label:'Medium (>20%)',   color:RISK_COLOR.MEDIUM },
+    { label:'Low (>0%)',       color:RISK_COLOR.LOW },
+    { label:'None',            color:RISK_COLOR.UNKNOWN },
+  ];
+
   return (
-    <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6" /> Compliance & GIS Intelligence
-        </h1>
-        <p className="text-slate-500 text-sm mt-1">Geographic delinquency mapping and compliance analytics</p>
+    <div style={S.page}>
+      {/* Header */}
+      <div style={{ ...S.pageHeader, marginBottom:'1.5rem' }}>
+        <div>
+          <h1 style={S.h1}>GIS & Compliance</h1>
+          <p style={{ ...S.muted, marginTop:'4px' }}>Geographic delinquency mapping and compliance analytics</p>
+        </div>
       </div>
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: 'Total Cases', value: list.length, color: 'text-slate-800', bg: 'bg-slate-50' },
-          { label: 'Delinquent', value: delinquent, color: 'text-red-600', bg: 'bg-red-50' },
-          { label: 'Critical Risk', value: critical, color: 'text-red-600', bg: 'bg-red-50' },
-          { label: 'Total Outstanding', value: `J$${totalOutstanding.toLocaleString()}`, color: 'text-orange-600', bg: 'bg-orange-50' },
-        ].map(s => (
-          <div key={s.label} className={`${s.bg} rounded-xl p-5`}>
-            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-            <div className="text-xs text-slate-500 mt-1">{s.label}</div>
+      {/* Stats */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'10px', marginBottom:'1.5rem' }}>
+        {stats.map(s => (
+          <div key={s.label} style={{ background:s.bg, border:`1.5px solid ${s.bd}`, borderRadius:'10px', padding:'12px 16px' }}>
+            <p style={S.statLabel}>{s.label}</p>
+            <p style={{ ...S.statNum, color:s.color }}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg mb-6 w-fit">
-        {[
-          { id: 'map', label: 'Delinquency Map', icon: Map },
-          { id: 'analytics', label: 'Risk Analytics', icon: BarChart3 },
-        ].map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
-            <tab.icon className="h-4 w-4" />{tab.label}
+      <div style={{ display:'flex', gap:'2px', background:C.surface, padding:'4px', borderRadius:'10px', width:'fit-content', marginBottom:'1.25rem', border:`1.5px solid ${C.border}` }}>
+        {[{id:'map',label:'Delinquency Map'},{id:'analytics',label:'Risk Analytics'}].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id as any)} style={{ padding:'7px 16px', borderRadius:'7px', fontFamily:F.display, fontWeight:700, fontSize:'0.72rem', letterSpacing:'0.06em', textTransform:'uppercase', border:'none', cursor:'pointer', transition:'all .15s', background: tab===t.id ? C.card : 'transparent', color: tab===t.id ? C.blue : C.muted, boxShadow: tab===t.id ? '0 1px 3px rgba(13,19,38,0.08)' : 'none' }}>
+            {t.label}
           </button>
         ))}
       </div>
 
-      {/* MAP TAB */}
-      {activeTab === 'map' && (
-        <div className="space-y-4">
+      {/* MAP */}
+      {tab==='map' && (
+        <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
           {/* Legend */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex items-center gap-6">
-            <span className="text-sm font-medium text-slate-700">Outstanding Balance Intensity:</span>
-            {[
-              { label: 'Critical (>80%)', color: RISK_COLORS.CRITICAL },
-              { label: 'High (>50%)', color: RISK_COLORS.HIGH },
-              { label: 'Medium (>20%)', color: RISK_COLORS.MEDIUM },
-              { label: 'Low (>0%)', color: RISK_COLORS.LOW },
-              { label: 'None', color: RISK_COLORS.UNKNOWN },
-            ].map(l => (
-              <div key={l.label} className="flex items-center gap-1">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: l.color }} />
-                <span className="text-xs text-slate-500">{l.label}</span>
+          <div style={{ ...S.card, padding:'10px 16px', display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
+            <span style={{ ...S.tiny, marginRight:'8px', marginBottom:0 }}>Intensity:</span>
+            {LEGEND.map(l => (
+              <div key={l.label} style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+                <div style={{ width:'10px', height:'10px', borderRadius:'50%', background:l.color, flexShrink:0 }} />
+                <span style={{ fontFamily:F.body, fontSize:'0.72rem', color:C.muted }}>{l.label}</span>
               </div>
             ))}
           </div>
 
           {/* Map */}
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden" style={{ height: '500px' }}>
+          <div style={{ ...S.card, overflow:'hidden', height:'480px' }}>
             {!MapComponents ? (
-              <div className="flex items-center justify-center h-full text-slate-400 text-sm">Loading map...</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%' }}>
+                <p style={S.muted}>Loading map…</p>
+              </div>
             ) : (
               <>
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                <MapComponents.MapContainer
-                  center={[18.1096, -77.2975]}
-                  zoom={9}
-                  style={{ height: '100%', width: '100%' }}
-                >
-                  <MapComponents.TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; OpenStreetMap contributors'
-                  />
-
-                  {/* Parish circles based on outstanding balance */}
-                  {parishData.filter((p: any) => p.coords).map((parish: any) => (
-                    <MapComponents.CircleMarker
-                      key={parish.parish}
-                      center={parish.coords}
-                      radius={Math.max(10, Math.min(40, (parish.outstanding / maxOutstanding) * 40))}
-                      pathOptions={{
-                        color: getRiskColor(parish.outstanding),
-                        fillColor: getRiskColor(parish.outstanding),
-                        fillOpacity: 0.6,
-                        weight: 2,
-                      }}
-                    >
+                <MapComponents.MapContainer center={[18.1096,-77.2975]} zoom={9} style={{ height:'100%', width:'100%' }}>
+                  <MapComponents.TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
+                  {parishData.filter((p: any) => p.coords).map((p: any) => (
+                    <MapComponents.CircleMarker key={p.parish} center={p.coords}
+                      radius={Math.max(10, Math.min(40, (p.outstanding/maxOut)*40))}
+                      pathOptions={{ color:riskColor(p.outstanding), fillColor:riskColor(p.outstanding), fillOpacity:0.6, weight:2 }}>
                       <MapComponents.Popup>
-                        <div className="text-sm">
-                          <div className="font-bold text-slate-800 mb-1">{parish.parish}</div>
-                          <div>Cases: <strong>{parish.cases}</strong></div>
-                          <div>Delinquent: <strong className="text-red-600">{parish.delinquent}</strong></div>
-                          <div>Outstanding: <strong className="text-orange-600">J${parish.outstanding.toLocaleString()}</strong></div>
+                        <div style={{ fontFamily:F.body, fontSize:'0.82rem' }}>
+                          <p style={{ fontFamily:F.display, fontWeight:700, marginBottom:'4px' }}>{p.parish}</p>
+                          <p>Cases: <strong>{p.cases}</strong></p>
+                          <p>Delinquent: <strong style={{ color:C.red }}>{p.delinquent}</strong></p>
+                          <p>Outstanding: <strong style={{ color:C.amber }}>J${p.outstanding.toLocaleString()}</strong></p>
                         </div>
                       </MapComponents.Popup>
                     </MapComponents.CircleMarker>
                   ))}
-
-                  {/* Individual case markers */}
                   {list.filter((c: any) => c.gps_lat && c.gps_lng).map((c: any) => (
                     <MapComponents.Marker key={c.id} position={[c.gps_lat, c.gps_lng]}>
                       <MapComponents.Popup>
-                        <div className="text-sm">
-                          <div className="font-bold">{c.composite_key}</div>
-                          <div>{c.owner_name}</div>
-                          <div className="text-red-600">J${Number(c.total_outstanding || 0).toLocaleString()}</div>
-                        </div>
+                        <p style={{ fontFamily:F.display, fontWeight:700, margin:0 }}>{c.composite_key}</p>
+                        <p style={{ fontFamily:F.body, fontSize:'0.8rem', margin:'2px 0 0' }}>{c.owner_name}</p>
                       </MapComponents.Popup>
                     </MapComponents.Marker>
                   ))}
@@ -203,30 +160,24 @@ export default function CompliancePage() {
             )}
           </div>
 
-          {/* Parish table below map */}
+          {/* Parish table */}
           {parishData.length > 0 && (
-            <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b"><h2 className="text-base font-semibold text-slate-800">Delinquency by Parish</h2></div>
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b"><tr>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Parish</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Cases</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Delinquent</th>
-                  <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Outstanding</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Risk Level</th>
+            <div style={{ ...S.card, overflow:'hidden' }}>
+              <div style={{ padding:'1rem 1.25rem', borderBottom:`1.5px solid ${C.border}` }}><h3 style={S.h3}>Delinquency by Parish</h3></div>
+              <table>
+                <thead><tr>
+                  {['Parish','Cases','Delinquent','Outstanding','Risk Level'].map(h => <th key={h} style={S.th}>{h}</th>)}
                 </tr></thead>
-                <tbody className="divide-y divide-slate-50">
-                  {parishData.sort((a: any, b: any) => b.outstanding - a.outstanding).map((p: any) => (
-                    <tr key={p.parish} className="hover:bg-slate-50">
-                      <td className="px-6 py-3 text-sm font-medium text-slate-800">{p.parish}</td>
-                      <td className="px-6 py-3 text-sm text-right">{p.cases}</td>
-                      <td className="px-6 py-3 text-sm text-right text-red-600 font-medium">{p.delinquent}</td>
-                      <td className="px-6 py-3 text-sm text-right font-bold text-orange-600">J${p.outstanding.toLocaleString()}</td>
-                      <td className="px-6 py-3">
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full font-medium"
-                          style={{ backgroundColor: getRiskColor(p.outstanding) + '20', color: getRiskColor(p.outstanding) }}>
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getRiskColor(p.outstanding) }} />
-                          {p.outstanding / maxOutstanding > 0.8 ? 'CRITICAL' : p.outstanding / maxOutstanding > 0.5 ? 'HIGH' : p.outstanding / maxOutstanding > 0.2 ? 'MEDIUM' : p.outstanding > 0 ? 'LOW' : 'NONE'}
+                <tbody>
+                  {parishData.sort((a: any,b: any) => b.outstanding-a.outstanding).map((p: any) => (
+                    <tr key={p.parish} onMouseEnter={e => (e.currentTarget.style.background=C.surface)} onMouseLeave={e => (e.currentTarget.style.background='')}>
+                      <td style={{ ...S.td, fontFamily:F.display, fontWeight:600 }}>{p.parish}</td>
+                      <td style={S.td}>{p.cases}</td>
+                      <td style={{ ...S.td, color:C.red, fontFamily:F.display, fontWeight:700 }}>{p.delinquent}</td>
+                      <td style={{ ...S.td, fontFamily:F.display, fontWeight:700, color:C.amber }}>J${p.outstanding.toLocaleString()}</td>
+                      <td style={S.td}>
+                        <span style={{ background:riskColor(p.outstanding)+'22', color:riskColor(p.outstanding), border:`1px solid ${riskColor(p.outstanding)}44`, fontFamily:F.display, fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase', padding:'3px 8px', borderRadius:'5px', whiteSpace:'nowrap' }}>
+                          {riskLabel(p.outstanding)}
                         </span>
                       </td>
                     </tr>
@@ -238,44 +189,29 @@ export default function CompliancePage() {
         </div>
       )}
 
-      {/* ANALYTICS TAB */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b"><h2 className="text-base font-semibold text-slate-800">Risk Distribution</h2></div>
-            <table className="w-full">
-              <thead className="bg-slate-50 border-b"><tr>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Composite Key</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Owner</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Area</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Risk</th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Outstanding</th>
-                <th className="text-right px-6 py-3 text-xs font-semibold text-slate-500 uppercase">Years</th>
-              </tr></thead>
-              <tbody className="divide-y divide-slate-50">
-                {list.length === 0 && <tr><td colSpan={7} className="text-center py-12 text-slate-400 text-sm">No cases found.</td></tr>}
-                {list.sort((a: any, b: any) => Number(b.total_outstanding || 0) - Number(a.total_outstanding || 0)).map((c: any) => (
-                  <tr key={c.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-3 text-sm font-mono font-medium text-slate-800">{c.composite_key}</td>
-                    <td className="px-6 py-3 text-sm text-slate-700">{c.owner_name}</td>
-                    <td className="px-6 py-3 text-sm text-slate-500">{c.area_name}</td>
-                    <td className="px-6 py-3">
-                      <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">{c.compliance_status || 'UNKNOWN'}</span>
-                    </td>
-                    <td className="px-6 py-3">
-                      <span className="text-xs px-2 py-1 rounded-full font-medium"
-                        style={{ backgroundColor: (RISK_COLORS[c.risk_level] || RISK_COLORS.UNKNOWN) + '20', color: RISK_COLORS[c.risk_level] || RISK_COLORS.UNKNOWN }}>
-                        {c.risk_level || 'UNKNOWN'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-3 text-sm font-bold text-red-600 text-right">J${Number(c.total_outstanding || 0).toLocaleString()}</td>
-                    <td className="px-6 py-3 text-sm text-slate-600 text-right">{c.years_outstanding || 0}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* ANALYTICS */}
+      {tab==='analytics' && (
+        <div style={{ ...S.card, overflow:'hidden' }}>
+          <div style={{ padding:'1rem 1.25rem', borderBottom:`1.5px solid ${C.border}` }}><h3 style={S.h3}>Risk Distribution</h3></div>
+          <table>
+            <thead><tr>
+              {['Composite Key','Owner','Area','Status','Risk','Outstanding','Years'].map(h => <th key={h} style={S.th}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {list.length===0 && <tr><td colSpan={7} style={{ ...S.td, textAlign:'center', padding:'3rem', color:C.muted }}>No cases found.</td></tr>}
+              {[...list].sort((a: any,b: any) => Number(b.total_outstanding||0)-Number(a.total_outstanding||0)).map((c: any) => (
+                <tr key={c.id} onMouseEnter={e => (e.currentTarget.style.background=C.surface)} onMouseLeave={e => (e.currentTarget.style.background='')}>
+                  <td style={{ ...S.td, fontFamily:F.display, fontWeight:700 }}>{c.composite_key}</td>
+                  <td style={S.td}>{c.owner_name}</td>
+                  <td style={S.tdMuted}>{c.area_name}</td>
+                  <td style={S.td}><span style={badgeForStatus(c.compliance_status||'UNKNOWN')}>{c.compliance_status||'UNKNOWN'}</span></td>
+                  <td style={S.td}><span style={badgeForStatus(c.risk_level||'UNKNOWN')}>{c.risk_level||'UNKNOWN'}</span></td>
+                  <td style={{ ...S.td, fontFamily:F.display, fontWeight:700, color:C.red }}>J${Number(c.total_outstanding||0).toLocaleString()}</td>
+                  <td style={S.tdMuted}>{c.years_outstanding||0}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
