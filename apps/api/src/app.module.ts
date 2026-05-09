@@ -23,6 +23,7 @@ import { PropertyCaseModule } from './modules/property-case/property-case.module
 import { DeliveryModule } from './modules/delivery/delivery.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { AuditModule } from './modules/audit/audit.module';
     DeliveryModule,
     ReconciliationModule,
     AuditModule,
+    AiModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
