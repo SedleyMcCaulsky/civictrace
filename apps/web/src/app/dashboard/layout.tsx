@@ -8,6 +8,7 @@ const NAV = [
   { href:'/dashboard',                label:'Overview',        icon:'◈', perm:null },
   { href:'/dashboard/cases',          label:'Case Registry',   icon:'⬡', perm:'cases:read' },
   { href:'/dashboard/deliveries',     label:'Delivery Ops',    icon:'⟳', perm:'delivery:read' },
+  { href:'/dashboard/assignments',     label:'Assignments',      icon:'⊞', perm:'delivery:read' },
   { href:'/dashboard/reconciliation', label:'Reconciliation',  icon:'⇌', perm:'reconciliation:read' },
   { href:'/dashboard/compliance',     label:'GIS & Compliance',icon:'◎', perm:'compliance:read' },
   { href:'/dashboard/audit',          label:'Audit Trail',     icon:'☰', perm:'audit:read' },
