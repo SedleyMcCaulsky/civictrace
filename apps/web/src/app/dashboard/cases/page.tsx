@@ -7,297 +7,290 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
-import { FileText, Plus, Search, X, ChevronLeft, ChevronRight, Brain, Shield, Paperclip } from 'lucide-react';
 
-const COMPLIANCE_COLORS: Record<string, string> = {
-  COMPLIANT: 'bg-green-100 text-green-700',
-  DELINQUENT: 'bg-red-100 text-red-700',
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  UNKNOWN: 'bg-slate-100 text-slate-600',
+const COMPLIANCE_STYLE: Record<string,{bg:string,color:string,border:string}> = {
+  COMPLIANT:  { bg:'#E6FBF4', color:'#059669', border:'#A7F3D0' },
+  DELINQUENT: { bg:'#FEF2F2', color:'#E53E3E', border:'#FECACA' },
+  PENDING:    { bg:'#FFFBEB', color:'#D97706', border:'#FDE68A' },
+  UNKNOWN:    { bg:'#F1F5F9', color:'#64748B', border:'#E2E8F0' },
+};
+const RISK_STYLE: Record<string,{bg:string,color:string,border:string}> = {
+  LOW:      { bg:'#E6FBF4', color:'#059669', border:'#A7F3D0' },
+  MEDIUM:   { bg:'#FFFBEB', color:'#D97706', border:'#FDE68A' },
+  HIGH:     { bg:'#FFF7ED', color:'#EA580C', border:'#FED7AA' },
+  CRITICAL: { bg:'#FEF2F2', color:'#E53E3E', border:'#FECACA' },
+  UNKNOWN:  { bg:'#F1F5F9', color:'#64748B', border:'#E2E8F0' },
 };
 
-const RISK_COLORS: Record<string, string> = {
-  LOW: 'bg-green-100 text-green-700',
-  MEDIUM: 'bg-yellow-100 text-yellow-700',
-  HIGH: 'bg-orange-100 text-orange-700',
-  CRITICAL: 'bg-red-100 text-red-700',
-  UNKNOWN: 'bg-slate-100 text-slate-600',
+const badgeStyle = (s: Record<string,{bg:string,color:string,border:string}>, key: string) => {
+  const v = s[key] || s.UNKNOWN;
+  return { background:v.bg, color:v.color, border:`1px solid ${v.border}`, fontSize:'0.62rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase' as const, padding:'3px 8px', borderRadius:'5px', whiteSpace:'nowrap' as const };
 };
 
-const createCaseSchema = z.object({
+const createSchema = z.object({
   areaId: z.string().uuid('Select an area'),
-  valuationNumber: z.string().min(3, 'Required'),
-  ownerName: z.string().min(2, 'Required'),
-  propertyAddress: z.string().min(5, 'Required'),
+  valuationNumber: z.string().min(3),
+  ownerName: z.string().min(2),
+  propertyAddress: z.string().min(5),
   propertyType: z.enum(['RESIDENTIAL','COMMERCIAL','INDUSTRIAL','AGRICULTURAL','MIXED_USE','VACANT_LAND','GOVERNMENT','INSTITUTIONAL','OTHER']),
-  volume: z.string().optional(),
-  folio: z.string().optional(),
   taxYear: z.number().min(2000).max(2100),
   amountDue: z.number().min(0.01),
 });
-
-type CreateCaseForm = z.infer<typeof createCaseSchema>;
+type CreateForm = z.infer<typeof createSchema>;
 
 export default function CasesPage() {
-  const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState({ ownerName: '', valuationNumber: '', areaCode: '' });
-  const [searchInput, setSearchInput] = useState({ ownerName: '', valuationNumber: '', areaCode: '' });
+  const [search, setSearch] = useState({ ownerName:'', valuationNumber:'', areaCode:'' });
+  const [draft, setDraft] = useState({ ownerName:'', valuationNumber:'', areaCode:'' });
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedCase, setSelectedCase] = useState<any>(null);
-  const [aiNarrative, setAiNarrative] = useState<string | null>(null);
+  const [selCase, setSelCase] = useState<string|null>(null);
+  const [aiNarrative, setAiNarrative] = useState<string|null>(null);
   const [aiRisk, setAiRisk] = useState<any>(null);
-  const [aiLoading, setAiLoading] = useState<string | null>(null);
-  const [evidenceFiles, setEvidenceFiles] = useState<any[]>([]);
+  const [aiLoading, setAiLoading] = useState<string|null>(null);
+  const [evidence, setEvidence] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadNotes, setUploadNotes] = useState('');
 
-  const { data: areas } = useQuery({
-    queryKey: ['areas'],
-    queryFn: async () => (await api.get('/cases/areas')).data,
-  });
-
-  const { data: casesData, isLoading } = useQuery({
-    queryKey: ['cases', page, search],
-    queryFn: async () => (await api.get('/cases', { params: { ...search, page, limit: 20 } })).data,
-  });
-
-  const { data: caseDetail } = useQuery({
-    queryKey: ['case', selectedCase],
-    queryFn: async () => (await api.get(`/cases/${selectedCase}`)).data,
-    enabled: !!selectedCase,
-  });
+  const { data: areas } = useQuery({ queryKey:['areas'], queryFn: async () => (await api.get('/cases/areas')).data });
+  const { data: casesData, isLoading } = useQuery({ queryKey:['cases', page, search], queryFn: async () => (await api.get('/cases', { params:{...search, page, limit:20} })).data });
+  const { data: caseDetail } = useQuery({ queryKey:['case', selCase], queryFn: async () => (await api.get(`/cases/${selCase}`)).data, enabled:!!selCase });
 
   useEffect(() => {
-    if (selectedCase) {
-      api.get(`/evidence/cases/${selectedCase}`)
-        .then(r => setEvidenceFiles(r.data || []))
-        .catch(() => setEvidenceFiles([]));
-    }
-  }, [selectedCase]);
+    if (selCase) api.get(`/evidence/cases/${selCase}`).then(r => setEvidence(r.data||[])).catch(() => setEvidence([]));
+  }, [selCase]);
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateCaseForm>({
-    resolver: zodResolver(createCaseSchema),
-    defaultValues: { propertyType: 'RESIDENTIAL', taxYear: new Date().getFullYear(), amountDue: 0 },
+  const { register, handleSubmit, reset, formState:{ isSubmitting } } = useForm<CreateForm>({
+    resolver: zodResolver(createSchema),
+    defaultValues: { propertyType:'RESIDENTIAL', taxYear: new Date().getFullYear(), amountDue:0 },
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: CreateCaseForm) => {
-      return (await api.post('/cases', {
-        areaId: data.areaId, valuationNumber: data.valuationNumber,
-        ownerName: data.ownerName, propertyAddress: data.propertyAddress,
-        propertyType: data.propertyType, volume: data.volume, folio: data.folio,
-        taxBalances: [{ taxYear: data.taxYear, amountDue: data.amountDue }],
-      })).data;
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['cases'] }); setShowCreate(false); reset(); },
+    mutationFn: async (d: CreateForm) => (await api.post('/cases', { areaId:d.areaId, valuationNumber:d.valuationNumber, ownerName:d.ownerName, propertyAddress:d.propertyAddress, propertyType:d.propertyType, taxBalances:[{ taxYear:d.taxYear, amountDue:d.amountDue }] })).data,
+    onSuccess: () => { qc.invalidateQueries({ queryKey:['cases'] }); setShowCreate(false); reset(); },
   });
 
-  async function generateNarrative(caseId: string) {
+  async function genNarrative(id: string) {
     setAiLoading('narrative'); setAiNarrative(null);
-    try { const r = await api.post(`/ai/cases/${caseId}/narrative`); setAiNarrative(r.data.narrative); }
+    try { const r = await api.post(`/ai/cases/${id}/narrative`); setAiNarrative(r.data.narrative); }
     catch (e: any) { setAiNarrative('Error: ' + (e.response?.data?.message || e.message)); }
     finally { setAiLoading(null); }
   }
 
-  async function generateRiskScore(caseId: string) {
+  async function genRisk(id: string) {
     setAiLoading('risk'); setAiRisk(null);
-    try { const r = await api.post(`/ai/cases/${caseId}/risk-score`); setAiRisk(r.data); }
-    catch (e: any) { setAiRisk({ error: e.response?.data?.message || e.message }); }
+    try { const r = await api.post(`/ai/cases/${id}/risk-score`); setAiRisk(r.data); }
+    catch (e: any) { setAiRisk({ error: e.message }); }
     finally { setAiLoading(null); }
   }
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !selectedCase) return;
+    if (!file || !selCase) return;
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (uploadNotes) formData.append('notes', uploadNotes);
-      formData.append('evidenceType', 'PHOTO');
-      await api.post(`/evidence/cases/${selectedCase}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const r = await api.get(`/evidence/cases/${selectedCase}`);
-      setEvidenceFiles(r.data || []);
-      setUploadNotes('');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (e: any) {
-      alert('Upload failed: ' + (e.response?.data?.message || e.message));
-    } finally { setUploading(false); }
+      const fd = new FormData();
+      fd.append('file', file);
+      if (uploadNotes) fd.append('notes', uploadNotes);
+      fd.append('evidenceType', 'PHOTO');
+      await api.post(`/evidence/cases/${selCase}/upload`, fd, { headers:{ 'Content-Type':'multipart/form-data' } });
+      const r = await api.get(`/evidence/cases/${selCase}`);
+      setEvidence(r.data||[]); setUploadNotes('');
+      if (fileRef.current) fileRef.current.value = '';
+    } catch (e: any) { alert('Upload failed: ' + (e.response?.data?.message || e.message)); }
+    finally { setUploading(false); }
   }
 
-  function handleSearch() { setSearch(searchInput); setPage(1); }
-  function clearSearch() { setSearchInput({ ownerName: '', valuationNumber: '', areaCode: '' }); setSearch({ ownerName: '', valuationNumber: '', areaCode: '' }); setPage(1); }
-
   const cases = casesData?.data || [];
-  const pagination = casesData?.pagination;
+  const pg = casesData?.pagination;
+
+  const inputStyle = { width:'100%', padding:'9px 12px', borderRadius:'8px', background:'#FAFBFF', border:'1.5px solid #DDE3F0', color:'#0d1326', fontSize:'0.85rem', fontFamily:'DM Sans,sans-serif', outline:'none', boxSizing:'border-box' as const };
+  const labelStyle = { display:'block' as const, fontSize:'0.63rem', fontFamily:'Syne,sans-serif', fontWeight:700 as const, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'#5C6A8A', marginBottom:'7px' };
+  const sectionHead = { fontFamily:'Syne,sans-serif', fontSize:'0.72rem', fontWeight:700 as const, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'#5C6A8A', marginBottom:'10px' };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div style={{ padding:'2rem 2.5rem', minHeight:'100vh' }}>
+      {/* Header */}
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.75rem' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><FileText className="h-6 w-6" /> Case Registry</h1>
-          <p className="text-slate-500 text-sm mt-1">{pagination?.total ?? 0} total cases</p>
+          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:'1.5rem', fontWeight:800, color:'#0d1326', margin:0 }}>Case Registry</h1>
+          <p style={{ color:'#5C6A8A', fontSize:'0.78rem', margin:'4px 0 0' }}>{pg?.total ?? 0} total cases</p>
         </div>
-        <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors">
-          <Plus className="h-4 w-4" /> New Case
-        </button>
+        <button onClick={() => setShowCreate(true)} className="vg-btn-primary" style={{ padding:'9px 18px', borderRadius:'9px' }}>+ New Case</button>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <input placeholder="Owner name..." value={searchInput.ownerName} onChange={e => setSearchInput(s => ({ ...s, ownerName: e.target.value }))} className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
-          <input placeholder="Valuation number..." value={searchInput.valuationNumber} onChange={e => setSearchInput(s => ({ ...s, valuationNumber: e.target.value }))} className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
-          <input placeholder="Area code..." value={searchInput.areaCode} onChange={e => setSearchInput(s => ({ ...s, areaCode: e.target.value }))} className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
-          <div className="flex gap-2">
-            <button onClick={handleSearch} className="flex-1 flex items-center justify-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700"><Search className="h-4 w-4" /> Search</button>
-            <button onClick={clearSearch} className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50"><X className="h-4 w-4" /></button>
+      {/* Search */}
+      <div className="vg-card" style={{ borderRadius:'12px', padding:'1rem', marginBottom:'1.25rem' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:'10px', alignItems:'end' }}>
+          {[
+            { ph:'Owner name…',        key:'ownerName' },
+            { ph:'Valuation number…',  key:'valuationNumber' },
+            { ph:'Area code…',         key:'areaCode' },
+          ].map(f => (
+            <input key={f.key} placeholder={f.ph} value={(draft as any)[f.key]} onChange={e => setDraft(d => ({...d, [f.key]: e.target.value}))} style={inputStyle}
+              onFocus={e => { e.target.style.borderColor='#2979FF'; e.target.style.boxShadow='0 0 0 3px rgba(41,121,255,0.1)'; }}
+              onBlur={e => { e.target.style.borderColor='#DDE3F0'; e.target.style.boxShadow='none'; }} />
+          ))}
+          <div style={{ display:'flex', gap:'6px' }}>
+            <button onClick={() => { setSearch(draft); setPage(1); }} className="vg-btn-primary" style={{ padding:'9px 16px', borderRadius:'8px', whiteSpace:'nowrap' }}>Search</button>
+            <button onClick={() => { setDraft({ownerName:'',valuationNumber:'',areaCode:''}); setSearch({ownerName:'',valuationNumber:'',areaCode:''}); setPage(1); }} style={{ padding:'9px 12px', borderRadius:'8px', background:'#F5F8FF', border:'1.5px solid #DDE3F0', color:'#5C6A8A', cursor:'pointer', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.78rem' }}>×</button>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mb-4">
-        <table className="w-full">
-          <thead className="bg-slate-50 border-b border-slate-100"><tr>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Composite Key</th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Owner</th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Address</th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Risk</th>
-            <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Outstanding</th>
-          </tr></thead>
-          <tbody className="divide-y divide-slate-50">
-            {isLoading && <tr><td colSpan={6} className="text-center py-12 text-slate-400 text-sm">Loading cases...</td></tr>}
-            {!isLoading && cases.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400 text-sm">No cases found.</td></tr>}
+      {/* Table */}
+      <div className="vg-card" style={{ borderRadius:'12px', overflow:'hidden', marginBottom:'1rem' }}>
+        <table style={{ width:'100%', borderCollapse:'collapse' }}>
+          <thead>
+            <tr style={{ background:'#F5F8FF', borderBottom:'1.5px solid #DDE3F0' }}>
+              {['Composite Key','Owner','Address','Status','Risk','Outstanding'].map((h,i) => (
+                <th key={h} style={{ padding:'10px 16px', textAlign: i===5 ? 'right':'left', fontSize:'0.62rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#5C6A8A' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#5C6A8A', fontSize:'0.85rem' }}>Loading cases…</td></tr>}
+            {!isLoading && cases.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#5C6A8A', fontSize:'0.85rem' }}>No cases found. Create your first case.</td></tr>}
             {cases.map((c: any) => (
-              <tr key={c.id} onClick={() => { setSelectedCase(c.id); setAiNarrative(null); setAiRisk(null); setEvidenceFiles([]); }} className="hover:bg-slate-50 cursor-pointer transition-colors">
-                <td className="px-4 py-3 text-sm font-mono font-medium text-slate-800">{c.composite_key}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{c.owner_name}</td>
-                <td className="px-4 py-3 text-sm text-slate-500 max-w-48 truncate">{c.property_address}</td>
-                <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${COMPLIANCE_COLORS[c.compliance_status] || COMPLIANCE_COLORS.UNKNOWN}`}>{c.compliance_status || 'UNKNOWN'}</span></td>
-                <td className="px-4 py-3"><span className={`text-xs px-2 py-1 rounded-full font-medium ${RISK_COLORS[c.risk_level] || RISK_COLORS.UNKNOWN}`}>{c.risk_level || 'UNKNOWN'}</span></td>
-                <td className="px-4 py-3 text-sm font-medium text-slate-800 text-right">J${Number(c.total_outstanding || 0).toLocaleString()}</td>
+              <tr key={c.id} onClick={() => { setSelCase(c.id); setAiNarrative(null); setAiRisk(null); setEvidence([]); }}
+                style={{ borderBottom:'1px solid #F0F4FF', cursor:'pointer', transition:'background .1s' }}
+                onMouseEnter={e => (e.currentTarget.style.background='#F5F8FF')}
+                onMouseLeave={e => (e.currentTarget.style.background='')}>
+                <td style={{ padding:'11px 16px', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.8rem', color:'#0d1326' }}>{c.composite_key}</td>
+                <td style={{ padding:'11px 16px', fontSize:'0.83rem', color:'#0d1326' }}>{c.owner_name}</td>
+                <td style={{ padding:'11px 16px', fontSize:'0.8rem', color:'#5C6A8A', maxWidth:'180px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.property_address}</td>
+                <td style={{ padding:'11px 16px' }}><span style={badgeStyle(COMPLIANCE_STYLE, c.compliance_status||'UNKNOWN')}>{c.compliance_status||'UNKNOWN'}</span></td>
+                <td style={{ padding:'11px 16px' }}><span style={badgeStyle(RISK_STYLE, c.risk_level||'UNKNOWN')}>{c.risk_level||'UNKNOWN'}</span></td>
+                <td style={{ padding:'11px 16px', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.83rem', color:'#0d1326', textAlign:'right' }}>J${Number(c.total_outstanding||0).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">Page {pagination.page} of {pagination.totalPages}</p>
-          <div className="flex gap-2">
-            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="flex items-center gap-1 px-3 py-2 border border-slate-200 rounded-lg text-sm disabled:opacity-40 hover:bg-slate-50"><ChevronLeft className="h-4 w-4" /> Prev</button>
-            <button onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))} disabled={page === pagination.totalPages} className="flex items-center gap-1 px-3 py-2 border border-slate-200 rounded-lg text-sm disabled:opacity-40 hover:bg-slate-50">Next <ChevronRight className="h-4 w-4" /></button>
+      {/* Pagination */}
+      {pg && pg.totalPages > 1 && (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <p style={{ color:'#5C6A8A', fontSize:'0.78rem' }}>Page {pg.page} of {pg.totalPages}</p>
+          <div style={{ display:'flex', gap:'6px' }}>
+            <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ padding:'7px 14px', borderRadius:'7px', background:'#fff', border:'1.5px solid #DDE3F0', color:'#5C6A8A', fontSize:'0.78rem', fontFamily:'Syne,sans-serif', fontWeight:700, cursor:'pointer', opacity: page===1 ? .4:1 }}>← Prev</button>
+            <button onClick={() => setPage(p => Math.min(pg.totalPages,p+1))} disabled={page===pg.totalPages} style={{ padding:'7px 14px', borderRadius:'7px', background:'#fff', border:'1.5px solid #DDE3F0', color:'#5C6A8A', fontSize:'0.78rem', fontFamily:'Syne,sans-serif', fontWeight:700, cursor:'pointer', opacity: page===pg.totalPages ? .4:1 }}>Next →</button>
           </div>
         </div>
       )}
 
-      {selectedCase && caseDetail && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
+      {/* Case Detail Modal */}
+      {selCase && caseDetail && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(13,19,38,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, padding:'1rem' }}>
+          <div style={{ background:'#fff', borderRadius:'16px', width:'100%', maxWidth:'680px', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(13,19,38,0.25)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:'1.5px solid #F0F4FF' }}>
               <div>
-                <h2 className="text-lg font-bold text-slate-800">{caseDetail.composite_key}</h2>
-                <p className="text-sm text-slate-500">{caseDetail.property_type} — {caseDetail.area_name}, {caseDetail.parish}</p>
+                <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'1rem', color:'#0d1326', margin:0 }}>{caseDetail.composite_key}</h2>
+                <p style={{ color:'#5C6A8A', fontSize:'0.75rem', margin:'3px 0 0' }}>{caseDetail.property_type} · {caseDetail.area_name}, {caseDetail.parish}</p>
               </div>
-              <button onClick={() => { setSelectedCase(null); setAiNarrative(null); setAiRisk(null); }} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+              <button onClick={() => { setSelCase(null); setAiNarrative(null); setAiRisk(null); }} style={{ background:'#F5F8FF', border:'1.5px solid #DDE3F0', borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'1.1rem', color:'#5C6A8A', display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
             </div>
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div><p className="text-xs text-slate-400 uppercase tracking-wide">Owner</p><p className="text-sm font-medium text-slate-800 mt-1">{caseDetail.owner_name}</p></div>
-                <div><p className="text-xs text-slate-400 uppercase tracking-wide">Address</p><p className="text-sm font-medium text-slate-800 mt-1">{caseDetail.property_address}</p></div>
-                <div><p className="text-xs text-slate-400 uppercase tracking-wide">Total Outstanding</p><p className="text-lg font-bold text-red-600 mt-1">J${Number(caseDetail.total_outstanding || 0).toLocaleString()}</p></div>
-                <div><p className="text-xs text-slate-400 uppercase tracking-wide">Years Outstanding</p><p className="text-lg font-bold text-slate-800 mt-1">{caseDetail.years_outstanding || 0}</p></div>
+
+            <div style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1.5rem' }}>
+              {/* Case info */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                {[
+                  { label:'Owner',             value: caseDetail.owner_name },
+                  { label:'Address',           value: caseDetail.property_address },
+                  { label:'Total Outstanding', value: `J$${Number(caseDetail.total_outstanding||0).toLocaleString()}`, bold:true, color:'#E53E3E' },
+                  { label:'Years Outstanding', value: caseDetail.years_outstanding||0, bold:true },
+                ].map(f => (
+                  <div key={f.label} style={{ background:'#F5F8FF', borderRadius:'10px', padding:'12px 14px', border:'1px solid #DDE3F0' }}>
+                    <p style={{ ...labelStyle, marginBottom:'4px' }}>{f.label}</p>
+                    <p style={{ color: f.color||'#0d1326', fontFamily:'Syne,sans-serif', fontWeight: f.bold ? 800:600, fontSize: f.bold ? '1.2rem':'0.88rem', margin:0 }}>{f.value}</p>
+                  </div>
+                ))}
               </div>
 
+              {/* Tax balances */}
               {caseDetail.taxBalances?.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3">Tax Balances</h3>
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b"><th className="text-left py-2 text-xs text-slate-400">Year</th><th className="text-right py-2 text-xs text-slate-400">Due</th><th className="text-right py-2 text-xs text-slate-400">Paid</th><th className="text-right py-2 text-xs text-slate-400">Balance</th><th className="text-center py-2 text-xs text-slate-400">Status</th></tr></thead>
-                    <tbody>{caseDetail.taxBalances.map((b: any) => (
-                      <tr key={b.id} className="border-b border-slate-50">
-                        <td className="py-2 font-medium">{b.tax_year}</td>
-                        <td className="py-2 text-right">J${Number(b.amount_due).toLocaleString()}</td>
-                        <td className="py-2 text-right">J${Number(b.amount_paid).toLocaleString()}</td>
-                        <td className="py-2 text-right font-medium text-red-600">J${Number(b.balance || b.amount_due - b.amount_paid).toLocaleString()}</td>
-                        <td className="py-2 text-center"><span className="text-xs px-2 py-0.5 bg-slate-100 rounded-full">{b.status}</span></td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
+                  <p style={sectionHead}>Tax Balances</p>
+                  <div style={{ border:'1.5px solid #DDE3F0', borderRadius:'10px', overflow:'hidden' }}>
+                    <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
+                      <thead><tr style={{ background:'#F5F8FF', borderBottom:'1px solid #DDE3F0' }}>
+                        {['Year','Due','Paid','Balance','Status'].map((h,i) => (
+                          <th key={h} style={{ padding:'8px 14px', textAlign: i>0 ? 'right':'left', ...labelStyle, marginBottom:0 }}>{h}</th>
+                        ))}
+                      </tr></thead>
+                      <tbody>
+                        {caseDetail.taxBalances.map((b: any) => (
+                          <tr key={b.id} style={{ borderBottom:'1px solid #F0F4FF' }}>
+                            <td style={{ padding:'9px 14px', fontFamily:'Syne,sans-serif', fontWeight:700, color:'#0d1326' }}>{b.tax_year}</td>
+                            <td style={{ padding:'9px 14px', textAlign:'right', color:'#5C6A8A' }}>J${Number(b.amount_due).toLocaleString()}</td>
+                            <td style={{ padding:'9px 14px', textAlign:'right', color:'#059669' }}>J${Number(b.amount_paid).toLocaleString()}</td>
+                            <td style={{ padding:'9px 14px', textAlign:'right', fontFamily:'Syne,sans-serif', fontWeight:700, color:'#E53E3E' }}>J${Number(b.balance||b.amount_due-b.amount_paid).toLocaleString()}</td>
+                            <td style={{ padding:'9px 14px', textAlign:'right' }}><span style={badgeStyle(COMPLIANCE_STYLE, b.status||'UNKNOWN')}>{b.status}</span></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2"><Paperclip className="h-4 w-4" /> Evidence Files</h3>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,.pdf"
-                  style={{ display: 'none' }}
-                  onChange={handleFileChange}
-                />
-                <div className="flex gap-2 mb-3">
-                  <input
-                    placeholder="Notes (optional)"
-                    value={uploadNotes}
-                    onChange={e => setUploadNotes(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                  />
-                  <button
-                    type="button"
-                    disabled={uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                  >
-                    {uploading ? 'Uploading...' : 'Upload File'}
+              {/* Evidence */}
+              <div>
+                <p style={sectionHead}>Evidence Files</p>
+                <div style={{ display:'flex', gap:'8px', marginBottom:'10px' }}>
+                  <input placeholder="Notes (optional)" value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} style={{ ...inputStyle, flex:1 }}
+                    onFocus={e => { e.target.style.borderColor='#2979FF'; }} onBlur={e => { e.target.style.borderColor='#DDE3F0'; }} />
+                  <input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display:'none' }} onChange={handleUpload} />
+                  <button onClick={() => fileRef.current?.click()} disabled={uploading} className="vg-btn-primary" style={{ padding:'9px 16px', borderRadius:'8px', whiteSpace:'nowrap', opacity: uploading?.55:1 }}>
+                    {uploading ? 'Uploading…' : '📎 Upload'}
                   </button>
                 </div>
-                {evidenceFiles.length === 0 ? (
-                  <p className="text-xs text-slate-400 py-2">No evidence files uploaded yet.</p>
+                {evidence.length===0 ? (
+                  <p style={{ color:'#5C6A8A', fontSize:'0.78rem' }}>No evidence files yet.</p>
                 ) : (
-                  <div className="space-y-2">
-                    {evidenceFiles.map((f: any) => (
-                      <div key={f.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
-                        <div><p className="text-sm font-medium text-slate-700">{f.file_name}</p>{f.notes && <p className="text-xs text-slate-400">{f.notes}</p>}</div>
-                        <a href={f.url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:text-blue-800 font-medium">View</a>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                    {evidence.map((f: any) => (
+                      <div key={f.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderRadius:'8px', background:'#F5F8FF', border:'1px solid #DDE3F0' }}>
+                        <div>
+                          <p style={{ color:'#0d1326', fontSize:'0.8rem', fontFamily:'Syne,sans-serif', fontWeight:600, margin:0 }}>{f.file_name}</p>
+                          {f.notes && <p style={{ color:'#5C6A8A', fontSize:'0.7rem', margin:'2px 0 0' }}>{f.notes}</p>}
+                        </div>
+                        <a href={f.url} target="_blank" rel="noreferrer" style={{ color:'#2979FF', fontSize:'0.75rem', fontFamily:'Syne,sans-serif', fontWeight:700, textDecoration:'none' }}>View →</a>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              <div className="border-t pt-4">
-                <h3 className="text-sm font-semibold text-slate-700 mb-3">AI Intelligence</h3>
-                <div className="flex gap-3 mb-4">
-                  <button onClick={() => generateNarrative(selectedCase)} disabled={aiLoading === 'narrative'} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
-                    <Brain className="h-4 w-4" />{aiLoading === 'narrative' ? 'Generating...' : 'Generate Narrative'}
+              {/* AI */}
+              <div>
+                <p style={sectionHead}>AI Intelligence</p>
+                <div style={{ display:'flex', gap:'8px', marginBottom:'12px' }}>
+                  <button onClick={() => genNarrative(selCase)} disabled={aiLoading==='narrative'} style={{ padding:'9px 16px', borderRadius:'8px', background:'#F5F3FF', border:'1.5px solid #DDD6FE', color:'#7C3AED', fontSize:'0.75rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', opacity: aiLoading==='narrative' ? .6:1 }}>
+                    🧠 {aiLoading==='narrative' ? 'Generating…' : 'Generate Narrative'}
                   </button>
-                  <button onClick={() => generateRiskScore(selectedCase)} disabled={aiLoading === 'risk'} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors">
-                    <Shield className="h-4 w-4" />{aiLoading === 'risk' ? 'Scoring...' : 'AI Risk Score'}
+                  <button onClick={() => genRisk(selCase)} disabled={aiLoading==='risk'} style={{ padding:'9px 16px', borderRadius:'8px', background:'#FFF7ED', border:'1.5px solid #FED7AA', color:'#EA580C', fontSize:'0.75rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', opacity: aiLoading==='risk' ? .6:1 }}>
+                    🛡 {aiLoading==='risk' ? 'Scoring…' : 'AI Risk Score'}
                   </button>
                 </div>
                 {aiRisk && !aiRisk.error && (
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-semibold text-orange-800">Risk Assessment</span>
-                      <span className={`text-sm font-bold px-3 py-1 rounded-full ${RISK_COLORS[aiRisk.level] || RISK_COLORS.UNKNOWN}`}>{aiRisk.level} ({aiRisk.score}/100)</span>
+                  <div style={{ background:'#FFF7ED', border:'1.5px solid #FED7AA', borderRadius:'10px', padding:'14px', marginBottom:'10px' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
+                      <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.82rem', color:'#EA580C' }}>Risk Assessment</span>
+                      <span style={badgeStyle(RISK_STYLE, aiRisk.level||'UNKNOWN')}>{aiRisk.level} ({aiRisk.score}/100)</span>
                     </div>
-                    <ul className="text-xs text-orange-700 space-y-1 mb-2">{aiRisk.factors?.map((f: string, i: number) => <li key={i}>• {f}</li>)}</ul>
-                    <p className="text-xs text-orange-800 font-medium">{aiRisk.recommendation}</p>
+                    <ul style={{ margin:'0 0 8px', paddingLeft:'16px' }}>{aiRisk.factors?.map((f: string, i: number) => <li key={i} style={{ color:'#92400E', fontSize:'0.78rem', marginBottom:'2px' }}>{f}</li>)}</ul>
+                    <p style={{ color:'#92400E', fontSize:'0.78rem', fontFamily:'Syne,sans-serif', fontWeight:600, margin:0 }}>{aiRisk.recommendation}</p>
                   </div>
                 )}
                 {aiNarrative && (
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-semibold text-purple-800">Compliance Narrative</span>
-                      <button onClick={() => navigator.clipboard.writeText(aiNarrative)} className="text-xs text-purple-600 hover:text-purple-800">Copy</button>
+                  <div style={{ background:'#F5F3FF', border:'1.5px solid #DDD6FE', borderRadius:'10px', padding:'14px' }}>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+                      <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.82rem', color:'#7C3AED' }}>Compliance Narrative</span>
+                      <button onClick={() => navigator.clipboard.writeText(aiNarrative)} style={{ background:'transparent', border:'1px solid #DDD6FE', borderRadius:'6px', color:'#7C3AED', fontSize:'0.7rem', fontFamily:'Syne,sans-serif', fontWeight:700, padding:'3px 10px', cursor:'pointer' }}>Copy</button>
                     </div>
-                    <div className="text-xs text-purple-900 whitespace-pre-wrap leading-relaxed">{aiNarrative}</div>
+                    <p style={{ color:'#3B0764', fontSize:'0.78rem', lineHeight:1.7, whiteSpace:'pre-wrap', margin:0 }}>{aiNarrative}</p>
                   </div>
                 )}
               </div>
@@ -306,45 +299,54 @@ export default function CasesPage() {
         </div>
       )}
 
+      {/* Create Modal */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-bold text-slate-800">New Property Case</h2>
-              <button onClick={() => { setShowCreate(false); reset(); }} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
+        <div style={{ position:'fixed', inset:0, background:'rgba(13,19,38,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, padding:'1rem' }}>
+          <div style={{ background:'#fff', borderRadius:'16px', width:'100%', maxWidth:'480px', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(13,19,38,0.25)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:'1.5px solid #F0F4FF' }}>
+              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'1rem', color:'#0d1326', margin:0 }}>New Property Case</h2>
+              <button onClick={() => { setShowCreate(false); reset(); }} style={{ background:'#F5F8FF', border:'1.5px solid #DDE3F0', borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'1.1rem', color:'#5C6A8A', display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
             </div>
-            <form onSubmit={handleSubmit(d => createMutation.mutate(d))} className="p-6 space-y-4">
-              {createMutation.isError && <div className="bg-red-50 text-red-700 text-sm px-4 py-3 rounded-lg">{(createMutation.error as any)?.response?.data?.message || 'Failed to create case'}</div>}
+            <form onSubmit={handleSubmit(d => createMutation.mutate(d))} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'14px' }}>
               <div>
-                <label className="text-sm font-medium text-slate-700">Area</label>
-                <select {...register('areaId')} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
-                  <option value="">Select area...</option>
+                <label style={labelStyle}>Area</label>
+                <select {...register('areaId')} style={inputStyle}>
+                  <option value="">Select area…</option>
                   {areas?.map((a: any) => <option key={a.id} value={a.id}>{a.name} — {a.parish}</option>)}
                 </select>
-                {errors.areaId && <p className="text-xs text-red-600 mt-1">{errors.areaId.message}</p>}
               </div>
               {[
-                { name: 'valuationNumber', label: 'Valuation Number', placeholder: 'e.g. 105C-2W-06-038' },
-                { name: 'ownerName', label: 'Owner Name', placeholder: 'Full legal name' },
-                { name: 'propertyAddress', label: 'Property Address', placeholder: 'Full address' },
+                { name:'valuationNumber', label:'Valuation Number', ph:'105C-2W-06-038' },
+                { name:'ownerName',       label:'Owner Name',       ph:'Full legal name' },
+                { name:'propertyAddress', label:'Property Address', ph:'Full address' },
               ].map(f => (
                 <div key={f.name}>
-                  <label className="text-sm font-medium text-slate-700">{f.label}</label>
-                  <input {...register(f.name as any)} placeholder={f.placeholder} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
+                  <label style={labelStyle}>{f.label}</label>
+                  <input {...register(f.name as any)} placeholder={f.ph} style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor='#2979FF'; e.target.style.boxShadow='0 0 0 3px rgba(41,121,255,0.1)'; }}
+                    onBlur={e => { e.target.style.borderColor='#DDE3F0'; e.target.style.boxShadow='none'; }} />
                 </div>
               ))}
               <div>
-                <label className="text-sm font-medium text-slate-700">Property Type</label>
-                <select {...register('propertyType')} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400">
+                <label style={labelStyle}>Property Type</label>
+                <select {...register('propertyType')} style={inputStyle}>
                   {['RESIDENTIAL','COMMERCIAL','INDUSTRIAL','AGRICULTURAL','MIXED_USE','VACANT_LAND','GOVERNMENT','INSTITUTIONAL','OTHER'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-sm font-medium text-slate-700">Tax Year</label><input type="number" {...register('taxYear', { valueAsNumber: true })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" /></div>
-                <div><label className="text-sm font-medium text-slate-700">Amount Due (J$)</label><input type="number" step="0.01" {...register('amountDue', { valueAsNumber: true })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" /></div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
+                <div>
+                  <label style={labelStyle}>Tax Year</label>
+                  <input type="number" {...register('taxYear', { valueAsNumber:true })} style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor='#2979FF'; }} onBlur={e => { e.target.style.borderColor='#DDE3F0'; }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Amount Due (J$)</label>
+                  <input type="number" step="0.01" {...register('amountDue', { valueAsNumber:true })} style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor='#2979FF'; }} onBlur={e => { e.target.style.borderColor='#DDE3F0'; }} />
+                </div>
               </div>
-              <button type="submit" disabled={isSubmitting || createMutation.isPending} className="w-full bg-slate-800 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50 transition-colors">
-                {createMutation.isPending ? 'Creating...' : 'Create Case'}
+              <button type="submit" disabled={isSubmitting || createMutation.isPending} className="vg-btn-primary" style={{ padding:'12px', borderRadius:'9px', marginTop:'4px' }}>
+                {createMutation.isPending ? 'Creating…' : 'Create Case'}
               </button>
             </form>
           </div>
