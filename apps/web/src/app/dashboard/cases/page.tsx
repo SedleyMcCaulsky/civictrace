@@ -7,24 +7,25 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
+import { S, C, F, badge, badgeForStatus } from '@/lib/styles';
 
 const COMPLIANCE_STYLE: Record<string,{bg:string,color:string,border:string}> = {
-  COMPLIANT:  { bg:'#E6FBF4', color:'#059669', border:'#A7F3D0' },
-  DELINQUENT: { bg:'#FEF2F2', color:'#E53E3E', border:'#FECACA' },
-  PENDING:    { bg:'#FFFBEB', color:'#D97706', border:'#FDE68A' },
+  COMPLIANT:  { bg:'#E6FBF4', color:C.green, border:'#A7F3D0' },
+  DELINQUENT: { bg:'#FEF2F2', color:C.red, border:'#FECACA' },
+  PENDING:    { bg:'#FFFBEB', color:C.amber, border:'#FDE68A' },
   UNKNOWN:    { bg:'#F1F5F9', color:'#64748B', border:'#E2E8F0' },
 };
 const RISK_STYLE: Record<string,{bg:string,color:string,border:string}> = {
-  LOW:      { bg:'#E6FBF4', color:'#059669', border:'#A7F3D0' },
-  MEDIUM:   { bg:'#FFFBEB', color:'#D97706', border:'#FDE68A' },
+  LOW:      { bg:'#E6FBF4', color:C.green, border:'#A7F3D0' },
+  MEDIUM:   { bg:'#FFFBEB', color:C.amber, border:'#FDE68A' },
   HIGH:     { bg:'#FFF7ED', color:'#EA580C', border:'#FED7AA' },
-  CRITICAL: { bg:'#FEF2F2', color:'#E53E3E', border:'#FECACA' },
+  CRITICAL: { bg:'#FEF2F2', color:C.red, border:'#FECACA' },
   UNKNOWN:  { bg:'#F1F5F9', color:'#64748B', border:'#E2E8F0' },
 };
 
 const badgeStyle = (s: Record<string,{bg:string,color:string,border:string}>, key: string) => {
   const v = s[key] || s.UNKNOWN;
-  return { background:v.bg, color:v.color, border:`1px solid ${v.border}`, fontSize:'0.62rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase' as const, padding:'3px 8px', borderRadius:'5px', whiteSpace:'nowrap' as const };
+  return { background:v.bg, color:v.color, border:`1px solid ${v.border}`, fontSize:'0.62rem', fontFamily:F.display, fontWeight:700, letterSpacing:'0.08em', textTransform:'uppercase' as const, padding:'3px 8px', borderRadius:'5px', whiteSpace:'nowrap' as const };
 };
 
 const createSchema = z.object({
@@ -105,17 +106,17 @@ export default function CasesPage() {
   const cases = casesData?.data || [];
   const pg = casesData?.pagination;
 
-  const inputStyle = { width:'100%', padding:'9px 12px', borderRadius:'8px', background:'#FAFBFF', border:'1.5px solid #DDE3F0', color:'#0d1326', fontSize:'0.85rem', fontFamily:'DM Sans,sans-serif', outline:'none', boxSizing:'border-box' as const };
-  const labelStyle = { display:'block' as const, fontSize:'0.63rem', fontFamily:'Syne,sans-serif', fontWeight:700 as const, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'#5C6A8A', marginBottom:'7px' };
-  const sectionHead = { fontFamily:'Syne,sans-serif', fontSize:'0.72rem', fontWeight:700 as const, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'#5C6A8A', marginBottom:'10px' };
+  const inputStyle = { width:'100%', padding:'9px 12px', borderRadius:'8px', background:'#FAFBFF', border:`1.5px solid ${C.border}`, color:C.text, fontSize:'0.85rem', fontFamily:F.body, outline:'none', boxSizing:'border-box' as const };
+  const labelStyle = { display:'block' as const, fontSize:'0.63rem', fontFamily:F.display, fontWeight:700 as const, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:C.muted, marginBottom:'7px' };
+  const sectionHead = { fontFamily:F.display, fontSize:'0.72rem', fontWeight:700 as const, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:C.muted, marginBottom:'10px' };
 
   return (
     <div style={{ minHeight:'100vh' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.75rem' }}>
         <div>
-          <h1 style={{ fontFamily:'Syne,sans-serif', fontSize:'1.5rem', fontWeight:800, color:'#0d1326', margin:0 }}>Case Registry</h1>
-          <p style={{ color:'#5C6A8A', fontSize:'0.78rem', margin:'4px 0 0' }}>{pg?.total ?? 0} total cases</p>
+          <h1 style={{ fontFamily:F.display, fontSize:'1.5rem', fontWeight:800, color:C.text, margin:0 }}>Case Registry</h1>
+          <p style={{ color:C.muted, fontSize:'0.78rem', margin:'4px 0 0' }}>{pg?.total ?? 0} total cases</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="vg-btn-primary" style={{ padding:'9px 18px', borderRadius:'9px' }}>+ New Case</button>
       </div>
@@ -128,13 +129,13 @@ export default function CasesPage() {
             { ph:'Valuation number…',  key:'valuationNumber' },
             { ph:'Area code…',         key:'areaCode' },
           ].map(f => (
-            <input key={f.key} placeholder={f.ph} value={(draft as any)[f.key]} onChange={e => setDraft(d => ({...d, [f.key]: e.target.value}))} style={inputStyle}
+            <input key={f.key} placeholder={f.ph} value={(draft as any)[f.key]} onChange={e => setDraft(d => ({...d, [f.key]: e.target.value}))} style={S.input}
               onFocus={e => { e.target.style.borderColor='#2979FF'; e.target.style.boxShadow='0 0 0 3px rgba(41,121,255,0.1)'; }}
               onBlur={e => { e.target.style.borderColor='#DDE3F0'; e.target.style.boxShadow='none'; }} />
           ))}
           <div style={{ display:'flex', gap:'6px' }}>
             <button onClick={() => { setSearch(draft); setPage(1); }} className="vg-btn-primary" style={{ padding:'9px 16px', borderRadius:'8px', whiteSpace:'nowrap' }}>Search</button>
-            <button onClick={() => { setDraft({ownerName:'',valuationNumber:'',areaCode:''}); setSearch({ownerName:'',valuationNumber:'',areaCode:''}); setPage(1); }} style={{ padding:'9px 12px', borderRadius:'8px', background:'#F5F8FF', border:'1.5px solid #DDE3F0', color:'#5C6A8A', cursor:'pointer', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.78rem' }}>×</button>
+            <button onClick={() => { setDraft({ownerName:'',valuationNumber:'',areaCode:''}); setSearch({ownerName:'',valuationNumber:'',areaCode:''}); setPage(1); }} style={{ padding:'9px 12px', borderRadius:'8px', background:C.surface, border:`1.5px solid ${C.border}`, color:C.muted, cursor:'pointer', fontFamily:F.display, fontWeight:700, fontSize:'0.78rem' }}>×</button>
           </div>
         </div>
       </div>
@@ -143,26 +144,26 @@ export default function CasesPage() {
       <div className="vg-card" style={{ borderRadius:'12px', overflow:'hidden', marginBottom:'1rem' }}>
         <table style={{ width:'100%', borderCollapse:'collapse' }}>
           <thead>
-            <tr style={{ background:'#F5F8FF', borderBottom:'1.5px solid #DDE3F0' }}>
+            <tr style={{ background:C.surface, borderBottom:`1.5px solid ${C.border}` }}>
               {['Composite Key','Owner','Address','Status','Risk','Outstanding'].map((h,i) => (
-                <th key={h} style={{ padding:'10px 16px', textAlign: i===5 ? 'right':'left', fontSize:'0.62rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#5C6A8A' }}>{h}</th>
+                <th key={h} style={{ padding:'10px 16px', textAlign: i===5 ? 'right':'left', fontSize:'0.62rem', fontFamily:F.display, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:C.muted }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {isLoading && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#5C6A8A', fontSize:'0.85rem' }}>Loading cases…</td></tr>}
-            {!isLoading && cases.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:'#5C6A8A', fontSize:'0.85rem' }}>No cases found. Create your first case.</td></tr>}
+            {isLoading && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:C.muted, fontSize:'0.85rem' }}>Loading cases…</td></tr>}
+            {!isLoading && cases.length===0 && <tr><td colSpan={6} style={{ padding:'3rem', textAlign:'center', color:C.muted, fontSize:'0.85rem' }}>No cases found. Create your first case.</td></tr>}
             {cases.map((c: any) => (
               <tr key={c.id} onClick={() => { setSelCase(c.id); setAiNarrative(null); setAiRisk(null); setEvidence([]); }}
-                style={{ borderBottom:'1px solid #F0F4FF', cursor:'pointer', transition:'background .1s' }}
+                style={{ borderBottom:`1px solid #F0F4FF`, cursor:'pointer', transition:'background .1s' }}
                 onMouseEnter={e => (e.currentTarget.style.background='#F5F8FF')}
                 onMouseLeave={e => (e.currentTarget.style.background='')}>
-                <td style={{ padding:'11px 16px', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.8rem', color:'#0d1326' }}>{c.composite_key}</td>
-                <td style={{ padding:'11px 16px', fontSize:'0.83rem', color:'#0d1326' }}>{c.owner_name}</td>
-                <td style={{ padding:'11px 16px', fontSize:'0.8rem', color:'#5C6A8A', maxWidth:'180px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.property_address}</td>
+                <td style={{ padding:'11px 16px', fontFamily:F.display, fontWeight:700, fontSize:'0.8rem', color:C.text }}>{c.composite_key}</td>
+                <td style={{ padding:'11px 16px', fontSize:'0.83rem', color:C.text }}>{c.owner_name}</td>
+                <td style={{ padding:'11px 16px', fontSize:'0.8rem', color:C.muted, maxWidth:'180px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.property_address}</td>
                 <td style={{ padding:'11px 16px' }}><span style={badgeStyle(COMPLIANCE_STYLE, c.compliance_status||'UNKNOWN')}>{c.compliance_status||'UNKNOWN'}</span></td>
                 <td style={{ padding:'11px 16px' }}><span style={badgeStyle(RISK_STYLE, c.risk_level||'UNKNOWN')}>{c.risk_level||'UNKNOWN'}</span></td>
-                <td style={{ padding:'11px 16px', fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.83rem', color:'#0d1326', textAlign:'right' }}>J${Number(c.total_outstanding||0).toLocaleString()}</td>
+                <td style={{ padding:'11px 16px', fontFamily:F.display, fontWeight:700, fontSize:'0.83rem', color:C.text, textAlign:'right' }}>J${Number(c.total_outstanding||0).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
@@ -172,10 +173,10 @@ export default function CasesPage() {
       {/* Pagination */}
       {pg && pg.totalPages > 1 && (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <p style={{ color:'#5C6A8A', fontSize:'0.78rem' }}>Page {pg.page} of {pg.totalPages}</p>
+          <p style={{ color:C.muted, fontSize:'0.78rem' }}>Page {pg.page} of {pg.totalPages}</p>
           <div style={{ display:'flex', gap:'6px' }}>
-            <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ padding:'7px 14px', borderRadius:'7px', background:'#fff', border:'1.5px solid #DDE3F0', color:'#5C6A8A', fontSize:'0.78rem', fontFamily:'Syne,sans-serif', fontWeight:700, cursor:'pointer', opacity: page===1 ? .4:1 }}>← Prev</button>
-            <button onClick={() => setPage(p => Math.min(pg.totalPages,p+1))} disabled={page===pg.totalPages} style={{ padding:'7px 14px', borderRadius:'7px', background:'#fff', border:'1.5px solid #DDE3F0', color:'#5C6A8A', fontSize:'0.78rem', fontFamily:'Syne,sans-serif', fontWeight:700, cursor:'pointer', opacity: page===pg.totalPages ? .4:1 }}>Next →</button>
+            <button onClick={() => setPage(p => Math.max(1,p-1))} disabled={page===1} style={{ padding:'7px 14px', borderRadius:'7px', background:C.card, border:`1.5px solid ${C.border}`, color:C.muted, fontSize:'0.78rem', fontFamily:F.display, fontWeight:700, cursor:'pointer', opacity: page===1 ? .4:1 }}>← Prev</button>
+            <button onClick={() => setPage(p => Math.min(pg.totalPages,p+1))} disabled={page===pg.totalPages} style={{ padding:'7px 14px', borderRadius:'7px', background:C.card, border:`1.5px solid ${C.border}`, color:C.muted, fontSize:'0.78rem', fontFamily:F.display, fontWeight:700, cursor:'pointer', opacity: page===pg.totalPages ? .4:1 }}>Next →</button>
           </div>
         </div>
       )}
@@ -183,13 +184,13 @@ export default function CasesPage() {
       {/* Case Detail Modal */}
       {selCase && caseDetail && (
         <div style={{ position:'fixed', inset:0, background:'rgba(13,19,38,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, padding:'1rem' }}>
-          <div style={{ background:'#fff', borderRadius:'16px', width:'100%', maxWidth:'680px', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(13,19,38,0.25)' }}>
+          <div style={{ background:C.card, borderRadius:'16px', width:'100%', maxWidth:'680px', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(13,19,38,0.25)' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:'1.5px solid #F0F4FF' }}>
               <div>
-                <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'1rem', color:'#0d1326', margin:0 }}>{caseDetail.composite_key}</h2>
-                <p style={{ color:'#5C6A8A', fontSize:'0.75rem', margin:'3px 0 0' }}>{caseDetail.property_type} · {caseDetail.area_name}, {caseDetail.parish}</p>
+                <h2 style={{ fontFamily:F.display, fontWeight:800, fontSize:'1rem', color:C.text, margin:0 }}>{caseDetail.composite_key}</h2>
+                <p style={{ color:C.muted, fontSize:'0.75rem', margin:'3px 0 0' }}>{caseDetail.property_type} · {caseDetail.area_name}, {caseDetail.parish}</p>
               </div>
-              <button onClick={() => { setSelCase(null); setAiNarrative(null); setAiRisk(null); }} style={{ background:'#F5F8FF', border:'1.5px solid #DDE3F0', borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'1.1rem', color:'#5C6A8A', display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+              <button onClick={() => { setSelCase(null); setAiNarrative(null); setAiRisk(null); }} style={{ background:C.surface, border:`1.5px solid ${C.border}`, borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'1.1rem', color:C.muted, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
             </div>
 
             <div style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1.5rem' }}>
@@ -198,12 +199,12 @@ export default function CasesPage() {
                 {[
                   { label:'Owner',             value: caseDetail.owner_name },
                   { label:'Address',           value: caseDetail.property_address },
-                  { label:'Total Outstanding', value: `J$${Number(caseDetail.total_outstanding||0).toLocaleString()}`, bold:true, color:'#E53E3E' },
+                  { label:'Total Outstanding', value: `J$${Number(caseDetail.total_outstanding||0).toLocaleString()}`, bold:true, color:C.red },
                   { label:'Years Outstanding', value: caseDetail.years_outstanding||0, bold:true },
                 ].map(f => (
-                  <div key={f.label} style={{ background:'#F5F8FF', borderRadius:'10px', padding:'12px 14px', border:'1px solid #DDE3F0' }}>
+                  <div key={f.label} style={{ background:C.surface, borderRadius:'10px', padding:'12px 14px', border:`1px solid ${C.border}` }}>
                     <p style={{ ...labelStyle, marginBottom:'4px' }}>{f.label}</p>
-                    <p style={{ color: f.color||'#0d1326', fontFamily:'Syne,sans-serif', fontWeight: f.bold ? 800:600, fontSize: f.bold ? '1.2rem':'0.88rem', margin:0 }}>{f.value}</p>
+                    <p style={{ color: f.color||'#0d1326', fontFamily:F.display, fontWeight: f.bold ? 800:600, fontSize: f.bold ? '1.2rem':'0.88rem', margin:0 }}>{f.value}</p>
                   </div>
                 ))}
               </div>
@@ -211,21 +212,21 @@ export default function CasesPage() {
               {/* Tax balances */}
               {caseDetail.taxBalances?.length > 0 && (
                 <div>
-                  <p style={sectionHead}>Tax Balances</p>
-                  <div style={{ border:'1.5px solid #DDE3F0', borderRadius:'10px', overflow:'hidden' }}>
+                  <p style={S.sectionHead}>Tax Balances</p>
+                  <div style={{ border:`1.5px solid ${C.border}`, borderRadius:'10px', overflow:'hidden' }}>
                     <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.82rem' }}>
-                      <thead><tr style={{ background:'#F5F8FF', borderBottom:'1px solid #DDE3F0' }}>
+                      <thead><tr style={{ background:C.surface, borderBottom:'1px solid #DDE3F0' }}>
                         {['Year','Due','Paid','Balance','Status'].map((h,i) => (
                           <th key={h} style={{ padding:'8px 14px', textAlign: i>0 ? 'right':'left', ...labelStyle, marginBottom:0 }}>{h}</th>
                         ))}
                       </tr></thead>
                       <tbody>
                         {caseDetail.taxBalances.map((b: any) => (
-                          <tr key={b.id} style={{ borderBottom:'1px solid #F0F4FF' }}>
-                            <td style={{ padding:'9px 14px', fontFamily:'Syne,sans-serif', fontWeight:700, color:'#0d1326' }}>{b.tax_year}</td>
-                            <td style={{ padding:'9px 14px', textAlign:'right', color:'#5C6A8A' }}>J${Number(b.amount_due).toLocaleString()}</td>
-                            <td style={{ padding:'9px 14px', textAlign:'right', color:'#059669' }}>J${Number(b.amount_paid).toLocaleString()}</td>
-                            <td style={{ padding:'9px 14px', textAlign:'right', fontFamily:'Syne,sans-serif', fontWeight:700, color:'#E53E3E' }}>J${Number(b.balance||b.amount_due-b.amount_paid).toLocaleString()}</td>
+                          <tr key={b.id} style={{ borderBottom:`1px solid #F0F4FF` }}>
+                            <td style={{ padding:'9px 14px', fontFamily:F.display, fontWeight:700, color:C.text }}>{b.tax_year}</td>
+                            <td style={{ padding:'9px 14px', textAlign:'right', color:C.muted }}>J${Number(b.amount_due).toLocaleString()}</td>
+                            <td style={{ padding:'9px 14px', textAlign:'right', color:C.green }}>J${Number(b.amount_paid).toLocaleString()}</td>
+                            <td style={{ padding:'9px 14px', textAlign:'right', fontFamily:F.display, fontWeight:700, color:C.red }}>J${Number(b.balance||b.amount_due-b.amount_paid).toLocaleString()}</td>
                             <td style={{ padding:'9px 14px', textAlign:'right' }}><span style={badgeStyle(COMPLIANCE_STYLE, b.status||'UNKNOWN')}>{b.status}</span></td>
                           </tr>
                         ))}
@@ -237,7 +238,7 @@ export default function CasesPage() {
 
               {/* Evidence */}
               <div>
-                <p style={sectionHead}>Evidence Files</p>
+                <p style={S.sectionHead}>Evidence Files</p>
                 <div style={{ display:'flex', gap:'8px', marginBottom:'10px' }}>
                   <input placeholder="Notes (optional)" value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} style={{ ...inputStyle, flex:1 }}
                     onFocus={e => { e.target.style.borderColor='#2979FF'; }} onBlur={e => { e.target.style.borderColor='#DDE3F0'; }} />
@@ -247,16 +248,16 @@ export default function CasesPage() {
                   </button>
                 </div>
                 {evidence.length===0 ? (
-                  <p style={{ color:'#5C6A8A', fontSize:'0.78rem' }}>No evidence files yet.</p>
+                  <p style={{ color:C.muted, fontSize:'0.78rem' }}>No evidence files yet.</p>
                 ) : (
                   <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
                     {evidence.map((f: any) => (
-                      <div key={f.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderRadius:'8px', background:'#F5F8FF', border:'1px solid #DDE3F0' }}>
+                      <div key={f.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', borderRadius:'8px', background:C.surface, border:`1px solid ${C.border}` }}>
                         <div>
-                          <p style={{ color:'#0d1326', fontSize:'0.8rem', fontFamily:'Syne,sans-serif', fontWeight:600, margin:0 }}>{f.file_name}</p>
-                          {f.notes && <p style={{ color:'#5C6A8A', fontSize:'0.7rem', margin:'2px 0 0' }}>{f.notes}</p>}
+                          <p style={{ color:C.text, fontSize:'0.8rem', fontFamily:F.display, fontWeight:600, margin:0 }}>{f.file_name}</p>
+                          {f.notes && <p style={{ color:C.muted, fontSize:'0.7rem', margin:'2px 0 0' }}>{f.notes}</p>}
                         </div>
-                        <a href={f.url} target="_blank" rel="noreferrer" style={{ color:'#2979FF', fontSize:'0.75rem', fontFamily:'Syne,sans-serif', fontWeight:700, textDecoration:'none' }}>View →</a>
+                        <a href={f.url} target="_blank" rel="noreferrer" style={{ color:C.blue, fontSize:'0.75rem', fontFamily:F.display, fontWeight:700, textDecoration:'none' }}>View →</a>
                       </div>
                     ))}
                   </div>
@@ -265,30 +266,30 @@ export default function CasesPage() {
 
               {/* AI */}
               <div>
-                <p style={sectionHead}>AI Intelligence</p>
+                <p style={S.sectionHead}>AI Intelligence</p>
                 <div style={{ display:'flex', gap:'8px', marginBottom:'12px' }}>
-                  <button onClick={() => genNarrative(selCase)} disabled={aiLoading==='narrative'} style={{ padding:'9px 16px', borderRadius:'8px', background:'#F5F3FF', border:'1.5px solid #DDD6FE', color:'#7C3AED', fontSize:'0.75rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', opacity: aiLoading==='narrative' ? .6:1 }}>
+                  <button onClick={() => genNarrative(selCase)} disabled={aiLoading==='narrative'} style={{ padding:'9px 16px', borderRadius:'8px', background:'#F5F3FF', border:'1.5px solid #DDD6FE', color:C.purple, fontSize:'0.75rem', fontFamily:F.display, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', opacity: aiLoading==='narrative' ? .6:1 }}>
                     🧠 {aiLoading==='narrative' ? 'Generating…' : 'Generate Narrative'}
                   </button>
-                  <button onClick={() => genRisk(selCase)} disabled={aiLoading==='risk'} style={{ padding:'9px 16px', borderRadius:'8px', background:'#FFF7ED', border:'1.5px solid #FED7AA', color:'#EA580C', fontSize:'0.75rem', fontFamily:'Syne,sans-serif', fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', opacity: aiLoading==='risk' ? .6:1 }}>
+                  <button onClick={() => genRisk(selCase)} disabled={aiLoading==='risk'} style={{ padding:'9px 16px', borderRadius:'8px', background:'#FFF7ED', border:'1.5px solid #FED7AA', color:'#EA580C', fontSize:'0.75rem', fontFamily:F.display, fontWeight:700, letterSpacing:'0.06em', textTransform:'uppercase', cursor:'pointer', opacity: aiLoading==='risk' ? .6:1 }}>
                     🛡 {aiLoading==='risk' ? 'Scoring…' : 'AI Risk Score'}
                   </button>
                 </div>
                 {aiRisk && !aiRisk.error && (
                   <div style={{ background:'#FFF7ED', border:'1.5px solid #FED7AA', borderRadius:'10px', padding:'14px', marginBottom:'10px' }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
-                      <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.82rem', color:'#EA580C' }}>Risk Assessment</span>
+                      <span style={{ fontFamily:F.display, fontWeight:700, fontSize:'0.82rem', color:'#EA580C' }}>Risk Assessment</span>
                       <span style={badgeStyle(RISK_STYLE, aiRisk.level||'UNKNOWN')}>{aiRisk.level} ({aiRisk.score}/100)</span>
                     </div>
                     <ul style={{ margin:'0 0 8px', paddingLeft:'16px' }}>{aiRisk.factors?.map((f: string, i: number) => <li key={i} style={{ color:'#92400E', fontSize:'0.78rem', marginBottom:'2px' }}>{f}</li>)}</ul>
-                    <p style={{ color:'#92400E', fontSize:'0.78rem', fontFamily:'Syne,sans-serif', fontWeight:600, margin:0 }}>{aiRisk.recommendation}</p>
+                    <p style={{ color:'#92400E', fontSize:'0.78rem', fontFamily:F.display, fontWeight:600, margin:0 }}>{aiRisk.recommendation}</p>
                   </div>
                 )}
                 {aiNarrative && (
                   <div style={{ background:'#F5F3FF', border:'1.5px solid #DDD6FE', borderRadius:'10px', padding:'14px' }}>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
-                      <span style={{ fontFamily:'Syne,sans-serif', fontWeight:700, fontSize:'0.82rem', color:'#7C3AED' }}>Compliance Narrative</span>
-                      <button onClick={() => navigator.clipboard.writeText(aiNarrative)} style={{ background:'transparent', border:'1px solid #DDD6FE', borderRadius:'6px', color:'#7C3AED', fontSize:'0.7rem', fontFamily:'Syne,sans-serif', fontWeight:700, padding:'3px 10px', cursor:'pointer' }}>Copy</button>
+                      <span style={{ fontFamily:F.display, fontWeight:700, fontSize:'0.82rem', color:C.purple }}>Compliance Narrative</span>
+                      <button onClick={() => navigator.clipboard.writeText(aiNarrative)} style={{ background:'transparent', border:'1px solid #DDD6FE', borderRadius:'6px', color:C.purple, fontSize:'0.7rem', fontFamily:F.display, fontWeight:700, padding:'3px 10px', cursor:'pointer' }}>Copy</button>
                     </div>
                     <p style={{ color:'#3B0764', fontSize:'0.78rem', lineHeight:1.7, whiteSpace:'pre-wrap', margin:0 }}>{aiNarrative}</p>
                   </div>
@@ -302,15 +303,15 @@ export default function CasesPage() {
       {/* Create Modal */}
       {showCreate && (
         <div style={{ position:'fixed', inset:0, background:'rgba(13,19,38,0.55)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:100, padding:'1rem' }}>
-          <div style={{ background:'#fff', borderRadius:'16px', width:'100%', maxWidth:'480px', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(13,19,38,0.25)' }}>
+          <div style={{ background:C.card, borderRadius:'16px', width:'100%', maxWidth:'480px', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(13,19,38,0.25)' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:'1.5px solid #F0F4FF' }}>
-              <h2 style={{ fontFamily:'Syne,sans-serif', fontWeight:800, fontSize:'1rem', color:'#0d1326', margin:0 }}>New Property Case</h2>
-              <button onClick={() => { setShowCreate(false); reset(); }} style={{ background:'#F5F8FF', border:'1.5px solid #DDE3F0', borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'1.1rem', color:'#5C6A8A', display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
+              <h2 style={{ fontFamily:F.display, fontWeight:800, fontSize:'1rem', color:C.text, margin:0 }}>New Property Case</h2>
+              <button onClick={() => { setShowCreate(false); reset(); }} style={{ background:C.surface, border:`1.5px solid ${C.border}`, borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'1.1rem', color:C.muted, display:'flex', alignItems:'center', justifyContent:'center' }}>×</button>
             </div>
             <form onSubmit={handleSubmit(d => createMutation.mutate(d))} style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'14px' }}>
               <div>
-                <label style={labelStyle}>Area</label>
-                <select {...register('areaId')} style={inputStyle}>
+                <label style={S.label}>Area</label>
+                <select {...register('areaId')} style={S.input}>
                   <option value="">Select area…</option>
                   {areas?.map((a: any) => <option key={a.id} value={a.id}>{a.name} — {a.parish}</option>)}
                 </select>
@@ -321,27 +322,27 @@ export default function CasesPage() {
                 { name:'propertyAddress', label:'Property Address', ph:'Full address' },
               ].map(f => (
                 <div key={f.name}>
-                  <label style={labelStyle}>{f.label}</label>
-                  <input {...register(f.name as any)} placeholder={f.ph} style={inputStyle}
+                  <label style={S.label}>{f.label}</label>
+                  <input {...register(f.name as any)} placeholder={f.ph} style={S.input}
                     onFocus={e => { e.target.style.borderColor='#2979FF'; e.target.style.boxShadow='0 0 0 3px rgba(41,121,255,0.1)'; }}
                     onBlur={e => { e.target.style.borderColor='#DDE3F0'; e.target.style.boxShadow='none'; }} />
                 </div>
               ))}
               <div>
-                <label style={labelStyle}>Property Type</label>
-                <select {...register('propertyType')} style={inputStyle}>
+                <label style={S.label}>Property Type</label>
+                <select {...register('propertyType')} style={S.input}>
                   {['RESIDENTIAL','COMMERCIAL','INDUSTRIAL','AGRICULTURAL','MIXED_USE','VACANT_LAND','GOVERNMENT','INSTITUTIONAL','OTHER'].map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'12px' }}>
                 <div>
-                  <label style={labelStyle}>Tax Year</label>
-                  <input type="number" {...register('taxYear', { valueAsNumber:true })} style={inputStyle}
+                  <label style={S.label}>Tax Year</label>
+                  <input type="number" {...register('taxYear', { valueAsNumber:true })} style={S.input}
                     onFocus={e => { e.target.style.borderColor='#2979FF'; }} onBlur={e => { e.target.style.borderColor='#DDE3F0'; }} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Amount Due (J$)</label>
-                  <input type="number" step="0.01" {...register('amountDue', { valueAsNumber:true })} style={inputStyle}
+                  <label style={S.label}>Amount Due (J$)</label>
+                  <input type="number" step="0.01" {...register('amountDue', { valueAsNumber:true })} style={S.input}
                     onFocus={e => { e.target.style.borderColor='#2979FF'; }} onBlur={e => { e.target.style.borderColor='#DDE3F0'; }} />
                 </div>
               </div>
