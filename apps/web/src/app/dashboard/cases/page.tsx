@@ -110,7 +110,7 @@ export default function CasesPage() {
   const sectionHead = { fontFamily:'Syne,sans-serif', fontSize:'0.72rem', fontWeight:700 as const, letterSpacing:'0.1em', textTransform:'uppercase' as const, color:'#5C6A8A', marginBottom:'10px' };
 
   return (
-    <div style={{ padding:"2rem 2.5rem", minHeight:"100vh", maxWidth:"1200px", margin:"0 auto", maxWidth:"1200px", margin:"0 auto"' }}>
+    <div style={{ padding:"2rem 2.5rem", minHeight:"100vh"' }}>
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1.75rem' }}>
         <div>
