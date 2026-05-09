@@ -1,0 +1,14 @@
+{
+  "name": "ValuGrid — Compliance Intelligence",
+  "short_name": "ValuGrid",
+  "description": "Property Tax Compliance Operations Platform",
+  "start_url": "/dashboard/deliveries",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1326",
+  "theme_color": "#2979FF",
+  "icons": [
+    { "src": "/valugrid-logo.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/valugrid-logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
