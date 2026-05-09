@@ -1,13 +1,13 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
-import { FileText, Plus, Search, X, ChevronLeft, ChevronRight, Brain, Shield } from 'lucide-react';
+import { FileText, Plus, Search, X, ChevronLeft, ChevronRight, Brain, Shield, Paperclip } from 'lucide-react';
 
 const COMPLIANCE_COLORS: Record<string, string> = {
   COMPLIANT: 'bg-green-100 text-green-700',
@@ -48,6 +48,9 @@ export default function CasesPage() {
   const [aiNarrative, setAiNarrative] = useState<string | null>(null);
   const [aiRisk, setAiRisk] = useState<any>(null);
   const [aiLoading, setAiLoading] = useState<string | null>(null);
+  const [evidenceFiles, setEvidenceFiles] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadNotes, setUploadNotes] = useState('');
 
   const { data: areas } = useQuery({
     queryKey: ['areas'],
@@ -65,6 +68,14 @@ export default function CasesPage() {
     enabled: !!selectedCase,
   });
 
+  useEffect(() => {
+    if (selectedCase) {
+      api.get(`/evidence/cases/${selectedCase}`)
+        .then(r => setEvidenceFiles(r.data || []))
+        .catch(() => setEvidenceFiles([]));
+    }
+  }, [selectedCase]);
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<CreateCaseForm>({
     resolver: zodResolver(createCaseSchema),
     defaultValues: { propertyType: 'RESIDENTIAL', taxYear: new Date().getFullYear(), amountDue: 0 },
@@ -72,49 +83,43 @@ export default function CasesPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateCaseForm) => {
-      const payload = {
-        areaId: data.areaId,
-        valuationNumber: data.valuationNumber,
-        ownerName: data.ownerName,
-        propertyAddress: data.propertyAddress,
-        propertyType: data.propertyType,
-        volume: data.volume,
-        folio: data.folio,
+      return (await api.post('/cases', {
+        areaId: data.areaId, valuationNumber: data.valuationNumber,
+        ownerName: data.ownerName, propertyAddress: data.propertyAddress,
+        propertyType: data.propertyType, volume: data.volume, folio: data.folio,
         taxBalances: [{ taxYear: data.taxYear, amountDue: data.amountDue }],
-      };
-      return (await api.post('/cases', payload)).data;
+      })).data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cases'] });
-      setShowCreate(false);
-      reset();
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['cases'] }); setShowCreate(false); reset(); },
   });
 
   async function generateNarrative(caseId: string) {
-    setAiLoading('narrative');
-    setAiNarrative(null);
-    try {
-      const res = await api.post(`/ai/cases/${caseId}/narrative`);
-      setAiNarrative(res.data.narrative);
-    } catch (err: any) {
-      setAiNarrative('Error generating narrative: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setAiLoading(null);
-    }
+    setAiLoading('narrative'); setAiNarrative(null);
+    try { const r = await api.post(`/ai/cases/${caseId}/narrative`); setAiNarrative(r.data.narrative); }
+    catch (e: any) { setAiNarrative('Error: ' + (e.response?.data?.message || e.message)); }
+    finally { setAiLoading(null); }
   }
 
   async function generateRiskScore(caseId: string) {
-    setAiLoading('risk');
-    setAiRisk(null);
+    setAiLoading('risk'); setAiRisk(null);
+    try { const r = await api.post(`/ai/cases/${caseId}/risk-score`); setAiRisk(r.data); }
+    catch (e: any) { setAiRisk({ error: e.response?.data?.message || e.message }); }
+    finally { setAiLoading(null); }
+  }
+
+  async function uploadEvidence(caseId: string, file: File) {
+    setUploading(true);
     try {
-      const res = await api.post(`/ai/cases/${caseId}/risk-score`);
-      setAiRisk(res.data);
-    } catch (err: any) {
-      setAiRisk({ error: err.response?.data?.message || err.message });
-    } finally {
-      setAiLoading(null);
-    }
+      const formData = new FormData();
+      formData.append('file', file);
+      if (uploadNotes) formData.append('notes', uploadNotes);
+      formData.append('evidenceType', 'PHOTO');
+      await api.post(`/evidence/cases/${caseId}/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const r = await api.get(`/evidence/cases/${caseId}`);
+      setEvidenceFiles(r.data || []);
+      setUploadNotes('');
+    } catch (e: any) { alert('Upload failed: ' + (e.response?.data?.message || e.message)); }
+    finally { setUploading(false); }
   }
 
   function handleSearch() { setSearch(searchInput); setPage(1); }
@@ -135,7 +140,6 @@ export default function CasesPage() {
         </button>
       </div>
 
-      {/* Search */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm p-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <input placeholder="Owner name..." value={searchInput.ownerName} onChange={e => setSearchInput(s => ({ ...s, ownerName: e.target.value }))} className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
@@ -148,7 +152,6 @@ export default function CasesPage() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden mb-4">
         <table className="w-full">
           <thead className="bg-slate-50 border-b border-slate-100"><tr>
@@ -161,9 +164,9 @@ export default function CasesPage() {
           </tr></thead>
           <tbody className="divide-y divide-slate-50">
             {isLoading && <tr><td colSpan={6} className="text-center py-12 text-slate-400 text-sm">Loading cases...</td></tr>}
-            {!isLoading && cases.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400 text-sm">No cases found. Create your first case.</td></tr>}
+            {!isLoading && cases.length === 0 && <tr><td colSpan={6} className="text-center py-12 text-slate-400 text-sm">No cases found.</td></tr>}
             {cases.map((c: any) => (
-              <tr key={c.id} onClick={() => { setSelectedCase(c.id); setAiNarrative(null); setAiRisk(null); }} className="hover:bg-slate-50 cursor-pointer transition-colors">
+              <tr key={c.id} onClick={() => { setSelectedCase(c.id); setAiNarrative(null); setAiRisk(null); setEvidenceFiles([]); }} className="hover:bg-slate-50 cursor-pointer transition-colors">
                 <td className="px-4 py-3 text-sm font-mono font-medium text-slate-800">{c.composite_key}</td>
                 <td className="px-4 py-3 text-sm text-slate-700">{c.owner_name}</td>
                 <td className="px-4 py-3 text-sm text-slate-500 max-w-48 truncate">{c.property_address}</td>
@@ -176,7 +179,6 @@ export default function CasesPage() {
         </table>
       </div>
 
-      {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-between">
           <p className="text-sm text-slate-500">Page {pagination.page} of {pagination.totalPages}</p>
@@ -187,7 +189,6 @@ export default function CasesPage() {
         </div>
       )}
 
-      {/* Case Detail Modal */}
       {selectedCase && caseDetail && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -198,9 +199,7 @@ export default function CasesPage() {
               </div>
               <button onClick={() => { setSelectedCase(null); setAiNarrative(null); setAiRisk(null); }} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
             </div>
-
             <div className="p-6 space-y-6">
-              {/* Case Details */}
               <div className="grid grid-cols-2 gap-4">
                 <div><p className="text-xs text-slate-400 uppercase tracking-wide">Owner</p><p className="text-sm font-medium text-slate-800 mt-1">{caseDetail.owner_name}</p></div>
                 <div><p className="text-xs text-slate-400 uppercase tracking-wide">Address</p><p className="text-sm font-medium text-slate-800 mt-1">{caseDetail.property_address}</p></div>
@@ -208,7 +207,6 @@ export default function CasesPage() {
                 <div><p className="text-xs text-slate-400 uppercase tracking-wide">Years Outstanding</p><p className="text-lg font-bold text-slate-800 mt-1">{caseDetail.years_outstanding || 0}</p></div>
               </div>
 
-              {/* Tax Balances */}
               {caseDetail.taxBalances?.length > 0 && (
                 <div>
                   <h3 className="text-sm font-semibold text-slate-700 mb-3">Tax Balances</h3>
@@ -227,37 +225,49 @@ export default function CasesPage() {
                 </div>
               )}
 
-              {/* AI Actions */}
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2"><Paperclip className="h-4 w-4" /> Evidence Files</h3>
+                <div className="flex gap-2 mb-3">
+                  <input placeholder="Notes (optional)" value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
+                  <label className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {uploading ? 'Uploading...' : 'Upload File'}
+                    <input type="file" accept="image/*,.pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadEvidence(selectedCase, e.target.files[0]); }} />
+                  </label>
+                </div>
+                {evidenceFiles.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-2">No evidence files uploaded yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {evidenceFiles.map((f: any) => (
+                      <div key={f.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                        <div><p className="text-sm font-medium text-slate-700">{f.file_name}</p>{f.notes && <p className="text-xs text-slate-400">{f.notes}</p>}</div>
+                        <a href={f.url} target="_blank" rel="noreferrer" className="text-xs text-blue-600 hover:text-blue-800 font-medium">View</a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="border-t pt-4">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3">AI Intelligence</h3>
                 <div className="flex gap-3 mb-4">
-                  <button onClick={() => generateNarrative(selectedCase)} disabled={aiLoading === 'narrative'}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
-                    <Brain className="h-4 w-4" />
-                    {aiLoading === 'narrative' ? 'Generating...' : 'Generate Narrative'}
+                  <button onClick={() => generateNarrative(selectedCase)} disabled={aiLoading === 'narrative'} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition-colors">
+                    <Brain className="h-4 w-4" />{aiLoading === 'narrative' ? 'Generating...' : 'Generate Narrative'}
                   </button>
-                  <button onClick={() => generateRiskScore(selectedCase)} disabled={aiLoading === 'risk'}
-                    className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors">
-                    <Shield className="h-4 w-4" />
-                    {aiLoading === 'risk' ? 'Scoring...' : 'AI Risk Score'}
+                  <button onClick={() => generateRiskScore(selectedCase)} disabled={aiLoading === 'risk'} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors">
+                    <Shield className="h-4 w-4" />{aiLoading === 'risk' ? 'Scoring...' : 'AI Risk Score'}
                   </button>
                 </div>
-
-                {/* Risk Score Result */}
                 {aiRisk && !aiRisk.error && (
                   <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-orange-800">Risk Assessment</span>
                       <span className={`text-sm font-bold px-3 py-1 rounded-full ${RISK_COLORS[aiRisk.level] || RISK_COLORS.UNKNOWN}`}>{aiRisk.level} ({aiRisk.score}/100)</span>
                     </div>
-                    <ul className="text-xs text-orange-700 space-y-1 mb-2">
-                      {aiRisk.factors?.map((f: string, i: number) => <li key={i}>• {f}</li>)}
-                    </ul>
+                    <ul className="text-xs text-orange-700 space-y-1 mb-2">{aiRisk.factors?.map((f: string, i: number) => <li key={i}>• {f}</li>)}</ul>
                     <p className="text-xs text-orange-800 font-medium">{aiRisk.recommendation}</p>
                   </div>
                 )}
-
-                {/* Narrative Result */}
                 {aiNarrative && (
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -273,7 +283,6 @@ export default function CasesPage() {
         </div>
       )}
 
-      {/* Create Case Modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -299,7 +308,6 @@ export default function CasesPage() {
                 <div key={f.name}>
                   <label className="text-sm font-medium text-slate-700">{f.label}</label>
                   <input {...register(f.name as any)} placeholder={f.placeholder} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
-                  {errors[f.name as keyof CreateCaseForm] && <p className="text-xs text-red-600 mt-1">{errors[f.name as keyof CreateCaseForm]?.message}</p>}
                 </div>
               ))}
               <div>
