@@ -1,6 +1,7 @@
+'use client';
 export const dynamic = 'force-dynamic';
 
-'use client';
+
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { BarChart3 } from 'lucide-react';
