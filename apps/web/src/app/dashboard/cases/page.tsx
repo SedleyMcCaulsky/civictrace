@@ -1,7 +1,7 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,6 +40,7 @@ type CreateCaseForm = z.infer<typeof createCaseSchema>;
 
 export default function CasesPage() {
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState({ ownerName: '', valuationNumber: '', areaCode: '' });
   const [searchInput, setSearchInput] = useState({ ownerName: '', valuationNumber: '', areaCode: '' });
@@ -107,19 +108,25 @@ export default function CasesPage() {
     finally { setAiLoading(null); }
   }
 
-  async function uploadEvidence(caseId: string, file: File) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !selectedCase) return;
     setUploading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
       if (uploadNotes) formData.append('notes', uploadNotes);
       formData.append('evidenceType', 'PHOTO');
-      await api.post(`/evidence/cases/${caseId}/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      const r = await api.get(`/evidence/cases/${caseId}`);
+      await api.post(`/evidence/cases/${selectedCase}/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const r = await api.get(`/evidence/cases/${selectedCase}`);
       setEvidenceFiles(r.data || []);
       setUploadNotes('');
-    } catch (e: any) { alert('Upload failed: ' + (e.response?.data?.message || e.message)); }
-    finally { setUploading(false); }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (e: any) {
+      alert('Upload failed: ' + (e.response?.data?.message || e.message));
+    } finally { setUploading(false); }
   }
 
   function handleSearch() { setSearch(searchInput); setPage(1); }
@@ -227,12 +234,28 @@ export default function CasesPage() {
 
               <div className="border-t pt-4">
                 <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2"><Paperclip className="h-4 w-4" /> Evidence Files</h3>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
                 <div className="flex gap-2 mb-3">
-                  <input placeholder="Notes (optional)" value={uploadNotes} onChange={e => setUploadNotes(e.target.value)} className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400" />
-                  <label className={`flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 cursor-pointer ${uploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <input
+                    placeholder="Notes (optional)"
+                    value={uploadNotes}
+                    onChange={e => setUploadNotes(e.target.value)}
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  />
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  >
                     {uploading ? 'Uploading...' : 'Upload File'}
-                    <input type="file" accept="image/*,.pdf" className="hidden" onChange={e => { if (e.target.files?.[0]) uploadEvidence(selectedCase, e.target.files[0]); }} />
-                  </label>
+                  </button>
                 </div>
                 {evidenceFiles.length === 0 ? (
                   <p className="text-xs text-slate-400 py-2">No evidence files uploaded yet.</p>
