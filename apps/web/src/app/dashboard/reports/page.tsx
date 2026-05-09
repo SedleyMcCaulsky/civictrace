@@ -2,7 +2,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { BarChart3 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6'];
 
@@ -19,15 +19,16 @@ export default function ReportsPage() {
     acc[k] = (acc[k] || 0) + 1;
     return acc;
   }, {});
-
   const parishData = Object.entries(byParish).map(([name, count]) => ({ name, count })).sort((a: any, b: any) => b.count - a.count).slice(0, 8);
 
   const byType = list.reduce((acc: any, c: any) => {
     acc[c.property_type] = (acc[c.property_type] || 0) + 1;
     return acc;
   }, {});
-
   const typeData = Object.entries(byType).map(([name, value]) => ({ name, value }));
+
+  const renderLabel = ({ name, percent }: { name?: string; percent?: number }) =>
+    `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`;
 
   return (
     <div className="p-8">
@@ -57,7 +58,7 @@ export default function ReportsPage() {
           {typeData.length === 0 ? <p className="text-slate-400 text-sm">No data yet.</p> : (
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
-                <Pie data={typeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                <Pie data={typeData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={renderLabel}>
                   {typeData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                 </Pie>
                 <Tooltip />
