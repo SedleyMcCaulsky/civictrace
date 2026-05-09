@@ -141,3 +141,29 @@
   to   { opacity:1; transform:translateY(0); }
 }
 .animate-up { animation: slide-up .45s ease forwards; }
+
+/* ── Content width constraint ────────────────────────────────────── */
+/* Prevents text from stretching across wide monitors */
+.vg-page {
+  padding: 2rem 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  min-height: 100vh;
+}
+
+/* Fix letter-spacing — was too wide */
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.01em !important;
+}
+
+/* Table columns — prevent stretch */
+table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+td, th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
