@@ -298,6 +298,7 @@ export default function CasesPage() {
               </div>
             </div>
           </div>
+          {selCase && <CaseTabs caseId={selCase.id} />}
         </div>
       )}
 
