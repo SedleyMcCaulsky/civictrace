@@ -8,6 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { api } from '@/lib/api';
 import { S, C, F, badge, badgeForStatus } from '@/lib/styles';
+import { CaseTabs } from './CaseTabs';
 
 const COMPLIANCE_STYLE: Record<string,{bg:string,color:string,border:string}> = {
   COMPLIANT:  { bg:'#E6FBF4', color:C.green, border:'#A7F3D0' },
