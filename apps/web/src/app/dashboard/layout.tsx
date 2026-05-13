@@ -11,6 +11,7 @@ const NAV = [
   { href:'/dashboard/assignments',     label:'Assignments',      icon:'⊞', perm:'delivery:read' },
   { href:'/dashboard/summons',          label:'Summons',          icon:'⚖', perm:'cases:read' },
   { href:'/dashboard/analytics',        label:'Analytics',        icon:'▦', perm:'reports:view' },
+  { href:'/dashboard/agent',             label:'AI Agent',         icon:'⚡', perm:'cases:read' },
   { href:'/dashboard/reconciliation', label:'Reconciliation',  icon:'⇌', perm:'reconciliation:read' },
   { href:'/dashboard/compliance',     label:'GIS & Compliance',icon:'◎', perm:'compliance:read' },
   { href:'/dashboard/audit',          label:'Audit Trail',     icon:'☰', perm:'audit:read' },
