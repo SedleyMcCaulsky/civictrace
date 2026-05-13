@@ -23,6 +23,7 @@ import { PropertyCaseModule } from './modules/property-case/property-case.module
 import { DeliveryModule } from './modules/delivery/delivery.module';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { TaxDriveModule } from './modules/tax-drive/tax-drive.module';
 import { ComplianceAgentModule } from './modules/compliance-agent/compliance-agent.module';
 import { SummonsModule } from './modules/summons/summons.module';
 import { ComplianceOpsModule } from './modules/compliance-ops/compliance-ops.module';
@@ -48,6 +49,7 @@ import { AiModule } from './modules/ai/ai.module';
     DeliveryModule,
     ReconciliationModule,
     AuditModule,
+    TaxDriveModule,
     ComplianceAgentModule,
     SummonsModule,
     ComplianceOpsModule,
