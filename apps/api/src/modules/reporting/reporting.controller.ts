@@ -1,16 +1,17 @@
 import {
-  Controller, Get, Query, Param, Res, ParseUUIDPipe,
+  Controller, Get, Post, Body, Query, Param, Res, ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ReportingService } from './reporting.service';
+import { EmailService } from './email.service';
 import { RequirePermissions } from '../../shared/guards/permissions.guard';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
 @Controller('reports')
 export class ReportingController {
-  constructor(private readonly service: ReportingService) {}
+  constructor(private readonly service: ReportingService, private readonly emailService: EmailService) {}
 
   @Get('executive')
   @RequirePermissions('reports:view')
@@ -80,5 +81,22 @@ export class ReportingController {
   @ApiQuery({ name: 'parish', required: false })
   async exportExcel(@Query('parish') parish: string, @Res() res: Response) {
     return this.service.exportOutstandingBalanceExcel(res, parish);
+  }
+
+  @Post('email/test')
+  @RequirePermissions('reports:view')
+  @ApiOperation({ summary: 'Send test weekly report email' })
+  async sendTestEmail(@Body('email') email: string) {
+    return this.emailService.sendTestReport(email || 'sedley@civictrace.gov.jm');
+  }
+
+  @Post('email/weekly')
+  @RequirePermissions('reports:view')
+  @ApiOperation({ summary: 'Trigger weekly report immediately' })
+  async sendWeeklyNow(@Body('recipients') recipients: string[]) {
+    await this.emailService.sendWeeklyReport(
+      recipients?.length ? recipients : ['sedley@civictrace.gov.jm']
+    );
+    return { message: 'Weekly report sent' };
   }
 }
