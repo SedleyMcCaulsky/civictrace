@@ -24,7 +24,7 @@ export class TaxDriveController {
   @Get('stats')
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Overall drive statistics' })
-  async getStats(@Query('from') from?: string, @Query('to') to?: string) { return this.service.getOverallDriveStats(from, to); }
+  async getOverallStats(@Query('from') from?: string, @Query('to') to?: string) { return this.service.getOverallStats(from, to); }
 
   @Get('report')
   @RequirePermissions('reports:view')
@@ -44,16 +44,4 @@ export class TaxDriveController {
   @RequirePermissions('cases:update')
   @ApiOperation({ summary: 'Update drive' })
   async update(@Param('id') id: string, @Body() dto: any) { return this.service.updateDrive(id, dto); }
-
-  @Post(':id/collections')
-  @RequirePermissions('cases:create')
-  @ApiOperation({ summary: 'Add collection to drive' })
-  async addCollection(@Param('id') id: string, @Body() dto: any, @Request() req: any) {
-    return this.service.addCollection(id, dto, req.user.sub);
-  }
-
-  @Delete('collections/:id')
-  @RequirePermissions('cases:create')
-  @ApiOperation({ summary: 'Remove collection entry' })
-  async deleteCollection(@Param('id') id: string) { return this.service.deleteCollection(id); }
 }
