@@ -6,10 +6,17 @@ import { DataSource } from 'typeorm';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private readonly resend: Resend;
+  private resend: Resend | null = null;
 
-  constructor(@InjectDataSource() private readonly db: DataSource) {
-    this.resend = new Resend(process.env.RESEND_API_KEY);
+  constructor(@InjectDataSource() private readonly db: DataSource) {}
+
+  private getResend(): Resend {
+    if (!this.resend) {
+      const key = process.env.RESEND_API_KEY;
+      if (!key) throw new Error('RESEND_API_KEY not configured');
+      this.resend = new Resend(key);
+    }
+    return this.resend;
   }
 
   private getCurrentFY(): string {
@@ -176,7 +183,7 @@ export class EmailService {
     const collected = data.overall.total_collected ? `J$${Number(data.overall.total_collected).toLocaleString()}` : 'J$0';
     const rate = data.overall.collection_rate ? `${Number(data.overall.collection_rate).toFixed(2)}%` : '0.00%';
 
-    const { error } = await this.resend.emails.send({
+    const { error } = await this.getResend().emails.send({
       from: 'ValuGrid Reports <reports@valugrid.gov.jm>',
       to: recipients,
       subject: `ValuGrid Weekly Collections — ${now} | ${collected} collected | ${rate} rate`,
