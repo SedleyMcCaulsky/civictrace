@@ -82,4 +82,46 @@ export class IdentityController {
     return this.identityService.unlockAccount(id, req.user.sub);
   }
 
+  @Public()
+  @Post('auth/forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset email' })
+  async forgotPassword(@Body('email') email: string) {
+    return this.identityService.requestPasswordReset(email);
+  }
+
+  @Public()
+  @Post('auth/reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with token' })
+  async resetPassword(@Body('token') token: string, @Body('password') password: string) {
+    return this.identityService.resetPassword(token, password);
+  }
+
+  @Post('auth/logout')
+  @ApiOperation({ summary: 'Logout and revoke session' })
+  async logout(@Body('refreshToken') refreshToken: string, @Request() req: any) {
+    if (refreshToken) await this.identityService.revokeSession(refreshToken, 'LOGOUT');
+    return { message: 'Logged out' };
+  }
+
+  @Post('auth/logout-all')
+  @ApiOperation({ summary: 'Logout from all devices' })
+  async logoutAll(@Request() req: any) {
+    return this.identityService.revokeAllSessions(req.user.sub, 'LOGOUT_ALL');
+  }
+
+  @Get('auth/sessions')
+  @ApiOperation({ summary: 'Get active sessions for current user' })
+  async getSessions(@Request() req: any) {
+    return this.identityService.getUserSessions(req.user.sub);
+  }
+
+  @Post('users/:id/revoke-sessions')
+  @RequirePermissions('users:manage')
+  @ApiOperation({ summary: 'Admin: revoke all sessions for a user' })
+  async revokeUserSessions(@Param('id') id: string) {
+    return this.identityService.revokeAllSessions(id, 'ADMIN_REVOKE');
+  }
+
 }
