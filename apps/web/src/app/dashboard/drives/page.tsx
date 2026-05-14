@@ -179,7 +179,7 @@ export default function DrivesPage() {
                   ))}
                 </div>
                 <p style={{...S.sectionHead,marginBottom:'10px'}}>Payment Method Breakdown</p>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px',marginBottom:'1.25rem'}}>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:'8px',marginBottom:'1.25rem'}}>
                   {[
                     {label:'Cash',value:sel.amount_cash||0,color:'#059669',bg:'#E6FBF4',bd:'#A7F3D0'},
                     {label:'Debit Card',value:sel.amount_debit||0,color:'#2979FF',bg:'#EEF3FF',bd:'#BFDBFE'},
