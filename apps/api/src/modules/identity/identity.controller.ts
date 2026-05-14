@@ -79,7 +79,7 @@ export class IdentityController {
   @RequirePermissions('users:manage')
   @ApiOperation({ summary: 'Unlock a locked account' })
   async unlockAccount(@Param('id') id: string, @Request() req: any) {
-    return this.service.unlockAccount(id, req.user.sub);
+    return this.identityService.unlockAccount(id, req.user.sub);
   }
 
 }
