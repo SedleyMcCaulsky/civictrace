@@ -88,7 +88,8 @@ export default function LoginPage() {
               </div>
             ))}
 
-            <button type="submit" disabled={isSubmitting} className="vg-btn vg-btn-primary" style={{ padding:'13px', borderRadius:'8px', marginTop:'6px' }}>
+            <div style={{textAlign:"right",marginBottom:"8px"}}><a href="/forgot-password" style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:"0.72rem",color:"#6b7280",textDecoration:"none"}}>Forgot password?</a></div>
+        <button type="submit" disabled={isSubmitting} className="vg-btn vg-btn-primary" style={{ padding:'13px', borderRadius:'8px', marginTop:'6px' }}>
               {isSubmitting ? 'Authenticating…' : 'Sign In →'}
             </button>
           </form>
