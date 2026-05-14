@@ -112,4 +112,17 @@ export class IdentityService {
     await this.db.query(`UPDATE identity.user SET is_active = false, updated_at = NOW() WHERE id = $1`, [userId]);
     return { message: `User ${result[0].email} deactivated` };
   }
+  async unlockAccount(userId: string, actorId: string) {
+    await this.db.query(
+      `UPDATE identity.user SET failed_login_attempts = 0, locked_until = NULL, last_failed_at = NULL WHERE id = $1`,
+      [userId],
+    );
+    await this.db.query(
+      `INSERT INTO audit.audit_log (actor_id, action, resource_type, resource_id, details, ip_address)
+       VALUES ($1, 'AUTH_ACCOUNT_UNLOCKED', 'user', $2, $3, 'system')`,
+      [actorId, userId, JSON.stringify({ unlockedBy: actorId })],
+    ).catch(() => {});
+    return { message: 'Account unlocked', userId };
+  }
+
 }
