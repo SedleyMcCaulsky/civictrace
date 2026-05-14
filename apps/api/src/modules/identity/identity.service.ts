@@ -30,8 +30,42 @@ export class IdentityService {
     if (!user) throw new UnauthorizedException('Invalid credentials');
     if (!user.is_active) throw new UnauthorizedException('Account is deactivated');
     if (!user.password_hash) throw new UnauthorizedException('Account not configured');
+
+      // ── Account lockout check ─────────────────────────────────
+      if (user.locked_until && new Date(user.locked_until) > new Date()) {
+        const minutesLeft = Math.ceil((new Date(user.locked_until).getTime() - Date.now()) / 60000);
+        await this.db.query(
+          `INSERT INTO audit.audit_log (actor_id, action, resource_type, resource_id, details, ip_address)
+           VALUES (NULL, 'AUTH_BLOCKED', 'user', $1, $2, 'system')`,
+          [user.id, JSON.stringify({ reason: 'Account locked', email: dto.email, minutesLeft })],
+        ).catch(() => {});
+        throw new UnauthorizedException(`Account locked. Try again in ${minutesLeft} minute${minutesLeft === 1 ? '' : 's'}.`);
+      }
     const valid = await bcrypt.compare(dto.password, user.password_hash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+      if (!valid) {
+        const attempts = (user.failed_login_attempts || 0) + 1;
+        const lockout = attempts >= 5;
+        await this.db.query(
+          `UPDATE identity.user SET failed_login_attempts = $1, last_failed_at = NOW(),
+           locked_until = CASE WHEN $2 THEN NOW() + INTERVAL '30 minutes' ELSE locked_until END
+           WHERE id = $3`,
+          [attempts, lockout, user.id],
+        );
+        await this.db.query(
+          `INSERT INTO audit.audit_log (actor_id, action, resource_type, resource_id, details, ip_address)
+           VALUES (NULL, $1, 'user', $2, $3, 'system')`,
+          [lockout ? 'AUTH_ACCOUNT_LOCKED' : 'AUTH_FAILED', user.id,
+           JSON.stringify({ email: dto.email, attempts, locked: lockout })],
+        ).catch(() => {});
+        if (lockout) throw new UnauthorizedException('Too many failed attempts. Account locked for 30 minutes.');
+        const remaining = 5 - attempts;
+        throw new UnauthorizedException(`Invalid credentials. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`);
+      }
+      // ── Reset on successful login ─────────────────────────────
+      await this.db.query(
+        `UPDATE identity.user SET failed_login_attempts = 0, locked_until = NULL, last_failed_at = NULL WHERE id = $1`,
+        [user.id],
+      );
     const permissions = await this.db.query<any[]>(
       `SELECT p.code FROM identity.role_permission rp
        JOIN identity.permission p ON p.id = rp.permission_id
