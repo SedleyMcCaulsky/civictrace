@@ -20,8 +20,8 @@ export class IdentityService {
   async login(dto: LoginDto) {
     const result = await this.db.query<any[]>(
       `SELECT u.id, u.email, u.full_name, u.is_active, u.is_field_officer,
-              u.region, u.password_hash, r.name as role_name, r.role_type
-       FROM identity.user u
+             u.region, u.password_hash, u.failed_login_attempts, u.locked_until, u.last_failed_at, r.name as role_name, r.role_type
+      FROM identity.user u
        JOIN identity.role r ON r.id = u.role_id
        WHERE u.email = $1 AND u.deleted_at IS NULL LIMIT 1`,
       [dto.email.toLowerCase()],
