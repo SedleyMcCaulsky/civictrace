@@ -359,7 +359,7 @@ export class ReportingService {
   // ── SUMMONS REPORT ────────────────────────────────────────────────
   async getSummonsData(financialYear?: string) {
     const fy = financialYear || '2024-2025';
-    const { rows } = await this.db.query(`
+    const rows = await this.db.query(`
       SELECT s.summons_number, s.financial_year, s.issued_date, s.court_date,
              s.status, s.previous_summons_count, s.notes,
              pc.owner_name, pc.property_address, pc.composite_key,
@@ -378,7 +378,7 @@ export class ReportingService {
       FROM registry.summons s
       JOIN registry.property_case pc ON pc.id = s.property_case_id
       WHERE s.financial_year = $1 AND pc.deleted_at IS NULL`, [fy]);
-    return { rows, totals: totals.rows[0], financialYear: fy };
+    return { rows, totals: totals[0], financialYear: fy };
   }
 
   async exportSummonsPDF(res: Response, financialYear?: string) {
@@ -456,7 +456,7 @@ export class ReportingService {
   // ── DISCRETIONARY RELIEF REPORT ───────────────────────────────────
   async getReliefData(financialYear?: string) {
     const fy = financialYear || '2024-2025';
-    const { rows } = await this.db.query(`
+    const rows = await this.db.query(`
       SELECT dr.application_date, dr.applicant_name, dr.relief_type,
              dr.amount_requested, dr.amount_approved, dr.financial_year,
              dr.status, dr.decision_date, dr.decision_notes,
@@ -477,7 +477,7 @@ export class ReportingService {
       FROM registry.discretionary_relief dr
       JOIN registry.property_case pc ON pc.id = dr.property_case_id
       WHERE dr.financial_year = $1 AND pc.deleted_at IS NULL`, [fy]);
-    return { rows, totals: totals.rows[0], financialYear: fy };
+    return { rows, totals: totals[0], financialYear: fy };
   }
 
   async exportReliefPDF(res: Response, financialYear?: string) {
@@ -555,7 +555,7 @@ export class ReportingService {
   async getCollectionsData(financialYear?: string) {
     const fy = financialYear || '2024-2025';
     const taxYear = parseInt(fy.split('-')[0]);
-    const { rows } = await this.db.query(`
+    const rows = await this.db.query(`
       SELECT pc.composite_key, pc.owner_name, pc.property_address,
              pc.property_type, a.name as area_name, a.parish,
              tb.amount_due, tb.amount_paid, tb.balance, tb.status
@@ -576,7 +576,7 @@ export class ReportingService {
       FROM registry.tax_balance tb
       JOIN registry.property_case pc ON pc.id = tb.property_case_id
       WHERE tb.tax_year = $1 AND pc.deleted_at IS NULL`, [taxYear]);
-    return { rows, totals: totals.rows[0], financialYear: fy, taxYear };
+    return { rows, totals: totals[0], financialYear: fy, taxYear };
   }
 
   async exportCollectionsPDF(res: Response, financialYear?: string) {
@@ -662,7 +662,7 @@ export class ReportingService {
     let whereClause = 'WHERE tb.tax_year = $1 AND pc.deleted_at IS NULL AND tb.balance > 0';
     const params: any[] = [taxYear];
     if (parish) { whereClause += ` AND a.parish = $2`; params.push(parish); }
-    const { rows } = await this.db.query(`
+    const rows = await this.db.query(`
       SELECT pc.composite_key, pc.owner_name, pc.property_address,
              pc.property_type, a.name as area_name, a.parish,
              tb.amount_due, tb.amount_paid, tb.balance, tb.status,
@@ -685,7 +685,7 @@ export class ReportingService {
       JOIN registry.property_case pc ON pc.id = tb.property_case_id
       JOIN gis.area a ON a.id = pc.area_id
       ${whereClause}`, params);
-    return { rows, totals: totals.rows[0], financialYear: fy, taxYear, parish };
+    return { rows, totals: totals[0], financialYear: fy, taxYear, parish };
   }
 
   async exportArrearsPDF(res: Response, financialYear?: string, parish?: string) {
