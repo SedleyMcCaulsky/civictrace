@@ -13,6 +13,7 @@ const PIE_COLORS = [C.red, C.amber, '#EAB308', C.green, C.blue, C.purple];
 export default function ReportsPage() {
   const [tab, setTab] = useState<typeof TABS[number]>('executive');
   const [parish, setParish] = useState('');
+  const [fy, setFy] = useState('2024-2025');
   const [from, setFrom] = useState(new Date(new Date().getFullYear(),0,1).toISOString().split('T')[0]);
   const [to,   setTo]   = useState(new Date().toISOString().split('T')[0]);
 
@@ -37,17 +38,63 @@ export default function ReportsPage() {
             <button onClick={async () => {
               const token = localStorage.getItem('civictrace_token');
               const res = await fetch(`${API_BASE}/reports/outstanding/export/pdf${parish?`?parish=${parish}`:''}`, { headers: { Authorization: `Bearer ${token}` } });
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
               const a = document.createElement('a'); a.href = url; a.download = 'outstanding-report.pdf'; a.click(); URL.revokeObjectURL(url);
-            }} style={S.btnSecondary}>↓ PDF</button>
+            }} style={S.btnSecondary}>↓ Outstanding PDF</button>
             <button onClick={async () => {
               const token = localStorage.getItem('civictrace_token');
               const res = await fetch(`${API_BASE}/reports/outstanding/export/excel${parish?`?parish=${parish}`:''}`, { headers: { Authorization: `Bearer ${token}` } });
-              const blob = await res.blob();
-              const url = URL.createObjectURL(blob);
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
               const a = document.createElement('a'); a.href = url; a.download = 'outstanding-report.xlsx'; a.click(); URL.revokeObjectURL(url);
-            }} style={S.btnPrimary}>↓ Excel</button>
+            }} style={S.btnPrimary}>↓ Outstanding Excel</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/summons/export/pdf?financialYear=${fy}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'summons-report.pdf'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnSecondary}>↓ Summons PDF</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/summons/export/excel?financialYear=${fy}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'summons-report.xlsx'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnPrimary}>↓ Summons Excel</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/relief/export/pdf?financialYear=${fy}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'relief-report.pdf'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnSecondary}>↓ Relief PDF</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/relief/export/excel?financialYear=${fy}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'relief-report.xlsx'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnPrimary}>↓ Relief Excel</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/collections/export/pdf?financialYear=${fy}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'collections-report.pdf'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnSecondary}>↓ Collections PDF</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/collections/export/excel?financialYear=${fy}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'collections-report.xlsx'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnPrimary}>↓ Collections Excel</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/arrears/export/pdf?financialYear=${fy}${parish?`&parish=${parish}`:''}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'arrears-report.pdf'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnSecondary}>↓ Arrears PDF</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/arrears/export/excel?financialYear=${fy}${parish?`&parish=${parish}`:''}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob(); const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'arrears-report.xlsx'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnPrimary}>↓ Arrears Excel</button>
           </div>
         )}
       </div>
