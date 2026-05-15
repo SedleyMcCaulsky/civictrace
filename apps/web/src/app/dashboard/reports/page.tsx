@@ -34,8 +34,20 @@ export default function ReportsPage() {
         </div>
         {tab==='outstanding' && (
           <div style={{ display:'flex', gap:'8px' }}>
-            <button onClick={() => window.open(`${API_BASE}/reports/outstanding/export/pdf${parish?`?parish=${parish}`:''}`, '_blank')} style={S.btnSecondary}>↓ PDF</button>
-            <button onClick={() => window.open(`${API_BASE}/reports/outstanding/export/excel${parish?`?parish=${parish}`:''}`, '_blank')} style={S.btnPrimary}>↓ Excel</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/outstanding/export/pdf${parish?`?parish=${parish}`:''}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'outstanding-report.pdf'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnSecondary}>↓ PDF</button>
+            <button onClick={async () => {
+              const token = localStorage.getItem('civictrace_token');
+              const res = await fetch(`${API_BASE}/reports/outstanding/export/excel${parish?`?parish=${parish}`:''}`, { headers: { Authorization: `Bearer ${token}` } });
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = 'outstanding-report.xlsx'; a.click(); URL.revokeObjectURL(url);
+            }} style={S.btnPrimary}>↓ Excel</button>
           </div>
         )}
       </div>

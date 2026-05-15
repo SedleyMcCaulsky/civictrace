@@ -31,7 +31,7 @@ export default function AnalyticsPage() {
   const { data: bottlenecks } = useQuery({ queryKey:['an-bottleneck'], queryFn: async () => (await api.get('/analytics/bottlenecks')).data, enabled:tab==='bottlenecks' });
 
   const parishes = ['Kingston','St. Andrew','St. Catherine','Clarendon','Manchester','St. Elizabeth','Westmoreland','Hanover','St. James','Trelawny','St. Ann','St. Mary','Portland','St. Thomas'];
-  const fyOpts = ['2023-2024','2024-2025','2025-2026','2026-2027'];
+  const fyOpts = ['2024-2025','2023-2024','2025-2026','2026-2027'];
 
   return (
     <div style={S.page}>
