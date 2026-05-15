@@ -18,7 +18,7 @@ export default function AnalyticsPage() {
   const [tab, setTab] = useState<typeof TABS[number]>('overall');
   const [period, setPeriod] = useState('monthly');
   const [parish, setParish] = useState('');
-  const [financialYear, setFinancialYear] = useState(FY());
+  const [financialYear, setFinancialYear] = useState('2024-2025');
   const [from, setFrom] = useState(new Date(new Date().getFullYear(),0,1).toISOString().split('T')[0]);
   const [to, setTo] = useState(new Date().toISOString().split('T')[0]);
   const [months, setMonths] = useState(6);

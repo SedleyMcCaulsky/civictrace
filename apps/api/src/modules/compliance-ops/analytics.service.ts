@@ -77,7 +77,7 @@ export class AnalyticsService {
   }
 
   async getOverallCollections(financialYear?: string) {
-    const fy = financialYear || this.getCurrentFY();
+    const fy = financialYear || '2024-2025';
     const r = await this.db.query(
       `SELECT SUM(tb.amount_due) as total_levied,
               SUM(tb.amount_paid) as total_collected,
