@@ -94,7 +94,8 @@ export class AnalyticsService {
        LEFT JOIN registry.payment_plan pp ON pp.property_case_id = pc.id AND pp.status = 'ACTIVE'
        LEFT JOIN registry.summons s ON s.property_case_id = pc.id AND s.financial_year = $1
        LEFT JOIN registry.discretionary_relief dr ON dr.property_case_id = pc.id AND dr.financial_year = $1
-       WHERE pc.deleted_at IS NULL`,
+       WHERE pc.deleted_at IS NULL
+       AND tb.tax_year = CAST(SPLIT_PART($1, '-', 1) AS SMALLINT)`,
       [fy],
     );
     return { ...r[0], financialYear: fy };
