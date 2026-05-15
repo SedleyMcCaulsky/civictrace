@@ -383,7 +383,6 @@ export class ReportingService {
 
   async exportSummonsPDF(res: Response, financialYear?: string) {
     const data = await this.getSummonsData(financialYear);
-    const PDFDocument = require('pdfkit');
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="valugrid-summons-${Date.now()}.pdf"`);
@@ -483,7 +482,6 @@ export class ReportingService {
 
   async exportReliefPDF(res: Response, financialYear?: string) {
     const data = await this.getReliefData(financialYear);
-    const PDFDocument = require('pdfkit');
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="valugrid-relief-${Date.now()}.pdf"`);
@@ -583,7 +581,6 @@ export class ReportingService {
 
   async exportCollectionsPDF(res: Response, financialYear?: string) {
     const data = await this.getCollectionsData(financialYear);
-    const PDFDocument = require('pdfkit');
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="valugrid-collections-${Date.now()}.pdf"`);
@@ -693,7 +690,6 @@ export class ReportingService {
 
   async exportArrearsPDF(res: Response, financialYear?: string, parish?: string) {
     const data = await this.getArrearsCasesData(financialYear, parish);
-    const PDFDocument = require('pdfkit');
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="valugrid-arrears-${Date.now()}.pdf"`);
