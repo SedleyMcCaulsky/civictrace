@@ -218,7 +218,7 @@ export class ReportingService {
     doc.pipe(res);
 
     // Header
-    doc.fontSize(20).font('Helvetica-Bold').text('CivicTrace', { align: 'center' });
+    doc.fontSize(20).font('Helvetica-Bold').text('ValuGrid', { align: 'center' });
     doc.fontSize(14).font('Helvetica').text('Outstanding Balance Report', { align: 'center' });
     doc.fontSize(10).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
     if (parish) doc.text(`Parish: ${parish}`, { align: 'center' });
@@ -269,13 +269,13 @@ export class ReportingService {
   async exportOutstandingBalanceExcel(res: Response, parish?: string) {
     const report = await this.getOutstandingBalanceReport(parish);
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'CivicTrace';
+    workbook.creator = 'ValuGrid';
 
     const sheet = workbook.addWorksheet('Outstanding Balances');
 
     // Title
     sheet.mergeCells('A1:F1');
-    sheet.getCell('A1').value = 'CivicTrace — Outstanding Balance Report';
+    sheet.getCell('A1').value = 'ValuGrid — Outstanding Balance Report';
     sheet.getCell('A1').font = { bold: true, size: 14 };
     sheet.getCell('A1').alignment = { horizontal: 'center' };
 
@@ -326,7 +326,7 @@ export class ReportingService {
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
     const convReport = await this.getPaymentConversionReport(monthStart, today);
 
-    reconSheet.addRow(['CivicTrace — Payment Conversion Report']).font = { bold: true, size: 14 };
+    reconSheet.addRow(['ValuGrid — Payment Conversion Report']).font = { bold: true, size: 14 };
     reconSheet.addRow([`Period: ${monthStart} to ${today}`]);
     reconSheet.addRow([]);
     reconSheet.addRow(['Total Records', convReport.summary?.total_records || 0]);
