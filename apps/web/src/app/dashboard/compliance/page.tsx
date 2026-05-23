@@ -112,21 +112,6 @@ export default function CompliancePage() {
       {/* MAP */}
       {tab==='map' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
-          {/* Legend */}
-          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
-            <label style={{ fontSize:'0.8rem', color:'#6b7280', fontWeight:600 }}>OPERATIONAL AREA</label>
-            <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
-              style={{ padding:'0.35rem 0.75rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'0.85rem', background:'#fff', cursor:'pointer' }}>
-              <option value="ALL">All Areas</option>
-              {Object.keys(PARISH_COORDS).map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-            {selectedArea !== 'ALL' && (
-              <button onClick={() => setSelectedArea('ALL')}
-                style={{ padding:'0.3rem 0.75rem', borderRadius:'6px', border:'1px solid #6b7280', background:'transparent', color:'#6b7280', fontSize:'0.8rem', cursor:'pointer' }}>
-                ✕ Clear
-              </button>
-            )}
-          </div>
           <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
             <label style={{ fontSize:'0.8rem', color:'#6b7280', fontWeight:600 }}>OPERATIONAL AREA</label>
             <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
