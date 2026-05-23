@@ -36,7 +36,7 @@ export class ReconciliationService {
       for (const record of dto.records) {
         const caseResult = await queryRunner.query(
           `SELECT id, composite_key FROM registry.property_case
-           WHERE area_code = $1 AND valuation_number = $2 AND deleted_at IS NULL`,
+           WHERE UPPER(area_code) = UPPER($1) AND UPPER(valuation_number) = UPPER($2) AND deleted_at IS NULL`,
           [record.rawAreaCode.toUpperCase(), record.rawValuationNumber],
         );
         const propertyCase = caseResult[0];

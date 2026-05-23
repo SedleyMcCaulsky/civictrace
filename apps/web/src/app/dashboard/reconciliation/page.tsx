@@ -92,7 +92,7 @@ export default function ReconciliationPage() {
                         <td key={k} style={{ padding:'6px 8px', borderBottom:'none' }}>
                           <input value={(row as any)[k]} onChange={e => upd(i,k,e.target.value)}
                             type={k==='amountPaid' ? 'number' : k==='paymentDate' ? 'date' : 'text'}
-                            placeholder={k==='rawAreaCode' ? 'NORBROOK' : k==='yearsCovered' ? '2023, 2024' : ''} style={S.input} />
+                            placeholder={k==='rawAreaCode' ? 'ST_ANDREW or KINGSTON' : k==='rawValuationNumber' ? '105C-2W-0639' : k==='amountPaid' ? '25000' : k==='yearsCovered' ? '2023, 2024' : ''} style={S.input} />
                         </td>
                       ))}
                       <td style={{ padding:'6px 8px', borderBottom:'none' }}>
