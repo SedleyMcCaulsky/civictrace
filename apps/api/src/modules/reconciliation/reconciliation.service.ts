@@ -1,170 +1,274 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { SubmitReconciliationDto } from './dto/submit-reconciliation.dto';
+'use client';
+export const dynamic = 'force-dynamic';
+import { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { S, C, F, badge } from '@/lib/styles';
 
-@Injectable()
-export class ReconciliationService {
-  private readonly logger = new Logger(ReconciliationService.name);
+interface RecRow {
+  caseId: string;
+  compositeKey: string;
+  ownerName: string;
+  rawAreaCode: string;
+  rawValuationNumber: string;
+  amountPaid: string;
+  paymentDate: string;
+  yearsCovered: string;
+}
 
-  constructor(
-    @InjectDataSource() private readonly db: DataSource,
-    private readonly eventEmitter: EventEmitter2,
-  ) {}
+function CaseSearch({ onSelect }: { onSelect: (c: any) => void }) {
+  const [q, setQ] = useState('');
+  const [results, setResults] = useState<any[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  async submitBatch(dto: SubmitReconciliationDto, officerId: string) {
-    const queryRunner = this.db.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
+  useEffect(() => {
+    if (q.length < 2) { setResults([]); setOpen(false); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await api.get('/cases', { params: { search: q, limit: 8 } });
+        setResults(res.data?.data || []);
+        setOpen(true);
+      } catch { setResults([]); }
+      finally { setLoading(false); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flex: 1 }}>
+      <input
+        value={q}
+        onChange={e => setQ(e.target.value)}
+        placeholder="Search by owner name, valuation no., or address..."
+        style={{ ...S.input, width: '100%' }}
+      />
+      {loading && (
+        <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.75rem', color: C.muted }}>
+          Searching...
+        </div>
+      )}
+      {open && results.length > 0 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: '8px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: '260px', overflowY: 'auto', marginTop: '4px'
+        }}>
+          {results.map((c: any) => (
+            <div
+              key={c.id}
+              onClick={() => { onSelect(c); setQ(c.composite_key); setOpen(false); }}
+              style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${C.border}` }}
+              onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
+              onMouseLeave={e => (e.currentTarget.style.background = '')}
+            >
+              <div style={{ fontFamily: F.display, fontWeight: 700, fontSize: '0.85rem' }}>{c.composite_key}</div>
+              <div style={{ fontSize: '0.78rem', color: C.muted, marginTop: '2px' }}>
+                {c.owner_name} · {c.property_address}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: C.green, marginTop: '1px' }}>
+                Outstanding: J${Number(c.total_outstanding || 0).toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {open && results.length === 0 && !loading && q.length >= 2 && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+          background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: '8px',
+          padding: '12px 14px', fontSize: '0.82rem', color: C.muted, marginTop: '4px'
+        }}>
+          No cases found for "{q}"
+        </div>
+      )}
+    </div>
+  );
+}
+
+const emptyRow = (): RecRow => ({
+  caseId: '', compositeKey: '', ownerName: '',
+  rawAreaCode: '', rawValuationNumber: '',
+  amountPaid: '', paymentDate: '', yearsCovered: '',
+});
+
+export default function ReconciliationPage() {
+  const [showForm, setShowForm] = useState(false);
+  const [rows, setRows] = useState<RecRow[]>([emptyRow()]);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const { data: batches, refetch } = useQuery({
+    queryKey: ['batches'],
+    queryFn: async () => (await api.get('/reconciliation/batches')).data,
+  });
+
+  const selectCase = (i: number, c: any) => {
+    setRows(r => r.map((row, idx) => idx === i ? {
+      ...row,
+      caseId: c.id,
+      compositeKey: c.composite_key,
+      ownerName: c.owner_name,
+      rawAreaCode: c.area_code,
+      rawValuationNumber: c.valuation_number,
+    } : row));
+  };
+
+  const upd = (i: number, k: keyof RecRow, v: string) =>
+    setRows(r => r.map((row, idx) => idx === i ? { ...row, [k]: v } : row));
+
+  async function submit() {
+    const invalid = rows.filter(r => !r.caseId || !r.amountPaid || !r.paymentDate || !r.yearsCovered);
+    if (invalid.length > 0) { alert('All rows must have a selected case, amount, date, and years covered.'); return; }
+    setSubmitting(true);
     try {
-      const batchResult = await queryRunner.query(
-        `INSERT INTO reconciliation.reconciliation_batch
-          (batch_reference, report_period_start, report_period_end,
-           submitted_by, total_records, status)
-         VALUES ($1, $2::date, $3::date, $4, $5, 'PROCESSING')
-         RETURNING id, batch_reference`,
-        [dto.batchReference, dto.reportPeriodStart, dto.reportPeriodEnd,
-         officerId, dto.records.length],
-      );
-      const batch = batchResult[0];
-
-      let matchedCount = 0;
-      let unmatchedCount = 0;
-
-      for (const record of dto.records) {
-        const caseResult = await queryRunner.query(
-          `SELECT id, composite_key FROM registry.property_case
-           WHERE UPPER(area_code) = UPPER($1) AND UPPER(valuation_number) = UPPER($2) AND deleted_at IS NULL`,
-          [record.rawAreaCode.toUpperCase(), record.rawValuationNumber],
-        );
-        const propertyCase = caseResult[0];
-        const status = propertyCase ? 'MATCHED' : 'UNMATCHED';
-        const matchConfidence = propertyCase ? 1.0 : 0.0;
-
-        if (propertyCase) matchedCount++;
-        else unmatchedCount++;
-
-        await queryRunner.query(
-          `INSERT INTO reconciliation.payment_reconciliation
-            (batch_id, property_case_id, raw_area_code, raw_valuation_number,
-             raw_owner_name, amount_paid, payment_date, payment_reference,
-             years_covered, status, match_confidence, submitted_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8, $9::int[], $10, $11, $12)`,
-          [
-            batch.id,
-            propertyCase?.id || null,
-            record.rawAreaCode,
-            record.rawValuationNumber,
-            record.rawOwnerName || null,
-            record.amountPaid,
-            record.paymentDate,
-            record.paymentReference || null,
-            record.yearsCovered,
-            status,
-            matchConfidence,
-            officerId,
-          ],
-        );
-
-        // Write-back: update tax_balance for each matched year
-        if (status === 'MATCHED' && propertyCase?.id && record.yearsCovered?.length) {
-          const perYearAmount = record.amountPaid / record.yearsCovered.length;
-          for (const yr of record.yearsCovered) {
-            await queryRunner.query(
-              `UPDATE registry.tax_balance
-               SET amount_paid        = LEAST(amount_due, amount_paid + $1),
-                   balance            = GREATEST(0, amount_due - LEAST(amount_due, amount_paid + $1)),
-                   status             = CASE
-                                         WHEN LEAST(amount_due, amount_paid + $1) >= amount_due
-                                           THEN 'PAID'::registry.balance_status
-                                         WHEN LEAST(amount_due, amount_paid + $1) > 0
-                                           THEN 'PARTIAL'::registry.balance_status
-                                         ELSE status
-                                       END,
-                   last_reconciled_at = NOW(),
-                   updated_at         = NOW()
-               WHERE property_case_id = $2
-                 AND tax_year         = $3`,
-              [perYearAmount, propertyCase.id, yr],
-            );
-          }
-        }
-      }
-
-      const totalAmount = dto.records.reduce((s, r) => s + r.amountPaid, 0);
-
-      await queryRunner.query(
-        `UPDATE reconciliation.reconciliation_batch
-         SET matched_count = $1, unmatched_count = $2,
-             total_amount = $3, status = 'COMPLETE', updated_at = NOW()
-         WHERE id = $4`,
-        [matchedCount, unmatchedCount, totalAmount, batch.id],
-      );
-
-      await queryRunner.commitTransaction();
-
-      this.eventEmitter.emit('reconciliation.batch.submitted', {
-        batchId: batch.id,
-        officerId,
-        matched: matchedCount,
-        unmatched: unmatchedCount,
-      });
-
-      this.logger.log(`Reconciliation batch submitted: ${batch.batch_reference}`);
-
-      return {
-        batchId: batch.id,
-        batchReference: batch.batch_reference,
-        totalRecords: dto.records.length,
-        matched: matchedCount,
-        unmatched: unmatchedCount,
-        unmatchedRate: `${((unmatchedCount / dto.records.length) * 100).toFixed(1)}%`,
+      const payload = {
+        batchReference: `BATCH-${Date.now()}`,
+        reportPeriodStart: rows[0]?.paymentDate || new Date().toISOString().split('T')[0],
+        reportPeriodEnd: new Date().toISOString().split('T')[0],
+        records: rows.map(r => ({
+          rawAreaCode: r.rawAreaCode,
+          rawValuationNumber: r.rawValuationNumber,
+          amountPaid: parseFloat(r.amountPaid),
+          paymentDate: r.paymentDate,
+          yearsCovered: r.yearsCovered.split(',').map(y => parseInt(y.trim())).filter(Boolean),
+        })),
       };
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
-    }
+      const res = await api.post('/reconciliation/batch', payload);
+      setResult(res.data);
+      refetch();
+      setShowForm(false);
+      setRows([emptyRow()]);
+    } catch (e: any) { alert(e.response?.data?.message || 'Submission failed'); }
+    finally { setSubmitting(false); }
   }
 
-  async getBatchSummary(batchId: string) {
-    const batchResult = await this.db.query(
-      `SELECT b.*, u.full_name as submitted_by_name
-       FROM reconciliation.reconciliation_batch b
-       JOIN identity.user u ON u.id = b.submitted_by
-       WHERE b.id = $1`,
-      [batchId],
-    );
-    const batch = batchResult[0];
+  return (
+    <div style={S.page}>
+      <div style={{ ...S.pageHeader, marginBottom: '1.5rem' }}>
+        <div>
+          <h1 style={S.h1}>Payment Reconciliation</h1>
+          <p style={{ ...S.muted, marginTop: '4px' }}>Match payments against property cases</p>
+        </div>
+        <button onClick={() => setShowForm(true)} style={S.btnPrimary}>+ New Batch</button>
+      </div>
 
-    const records = await this.db.query(
-      `SELECT pr.id, pr.raw_area_code, pr.raw_valuation_number,
-              pr.amount_paid, pr.payment_date, pr.years_covered,
-              pr.status, pr.match_confidence,
-              pc.composite_key, pc.property_address
-       FROM reconciliation.payment_reconciliation pr
-       LEFT JOIN registry.property_case pc ON pc.id = pr.property_case_id
-       WHERE pr.batch_id = $1
-       ORDER BY pr.status, pr.raw_area_code`,
-      [batchId],
-    );
+      {result && (
+        <div style={{ background: C.greenBg, border: `1px solid ${C.greenBd}`, borderRadius: '10px', padding: '12px 16px', marginBottom: '1.25rem' }}>
+          <p style={{ fontFamily: F.display, fontWeight: 700, fontSize: '0.85rem', color: C.green, margin: '0 0 3px' }}>
+            Batch Submitted: {result.batchReference}
+          </p>
+          <p style={S.muted}>Matched: {result.matched} / {result.totalRecords} — Unmatched rate: {result.unmatchedRate}</p>
+        </div>
+      )}
 
-    return { batch, records };
-  }
+      <div style={{ ...S.card, overflow: 'hidden' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: `1.5px solid ${C.border}` }}>
+          <h3 style={S.h3}>Recent Batches</h3>
+        </div>
+        {!batches || batches.length === 0 ? (
+          <p style={{ ...S.muted, padding: '3rem', textAlign: 'center' }}>No batches yet.</p>
+        ) : (
+          <table>
+            <thead><tr>
+              {['Reference', 'Period', 'Records', 'Matched', 'Amount', 'Status'].map(h => (
+                <th key={h} style={S.th}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {batches.map((b: any) => (
+                <tr key={b.id}
+                  onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
+                  onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                  <td style={{ ...S.td, fontFamily: F.display, fontWeight: 700 }}>{b.batch_reference}</td>
+                  <td style={S.tdMuted}>{new Date(b.report_period_start).toLocaleDateString()} → {new Date(b.report_period_end).toLocaleDateString()}</td>
+                  <td style={S.td}>{b.total_records}</td>
+                  <td style={{ ...S.td, color: C.green, fontFamily: F.display, fontWeight: 700 }}>{b.matched_count}</td>
+                  <td style={{ ...S.td, fontFamily: F.display, fontWeight: 700 }}>J${Number(b.total_amount || 0).toLocaleString()}</td>
+                  <td style={S.td}><span style={badge('green')}>{b.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
-  async getRecentBatches(officerId: string) {
-    return this.db.query(
-      `SELECT b.id, b.batch_reference, b.report_period_start, b.report_period_end,
-              b.total_records, b.matched_count, b.unmatched_count,
-              b.total_amount, b.status, b.created_at
-       FROM reconciliation.reconciliation_batch b
-       WHERE b.submitted_by = $1
-       ORDER BY b.created_at DESC
-       LIMIT 20`,
-      [officerId],
-    );
-  }
+      {showForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(13,19,38,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
+          <div style={{ ...S.card, width: '100%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: `1.5px solid ${C.border}` }}>
+              <h2 style={S.h2}>New Reconciliation Batch</h2>
+              <button onClick={() => { setShowForm(false); setRows([emptyRow()]); }}
+                style={{ background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.1rem', color: C.muted, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+            <div style={{ padding: '1.5rem' }}>
+              {rows.map((row, i) => (
+                <div key={i} style={{ background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: '10px', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                    <span style={{ fontFamily: F.display, fontWeight: 700, fontSize: '0.8rem', color: C.muted }}>PAYMENT RECORD {i + 1}</span>
+                    {rows.length > 1 && (
+                      <button onClick={() => setRows(r => r.filter((_, idx) => idx !== i))}
+                        style={{ background: 'transparent', border: `1px solid ${C.redBd}`, borderRadius: '6px', color: C.red, fontSize: '0.7rem', fontFamily: F.display, fontWeight: 700, padding: '3px 10px', cursor: 'pointer' }}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Case Search */}
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: C.muted, display: 'block', marginBottom: '4px' }}>PROPERTY CASE</label>
+                    <CaseSearch onSelect={c => selectCase(i, c)} />
+                  </div>
+
+                  {/* Selected case confirmation */}
+                  {row.caseId && (
+                    <div style={{ background: C.greenBg, border: `1px solid ${C.greenBd}`, borderRadius: '7px', padding: '8px 12px', marginBottom: '0.75rem', fontSize: '0.8rem' }}>
+                      <span style={{ fontFamily: F.display, fontWeight: 700, color: C.green }}>{row.compositeKey}</span>
+                      <span style={{ color: C.muted, marginLeft: '8px' }}>{row.ownerName}</span>
+                    </div>
+                  )}
+
+                  {/* Payment fields */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: C.muted, display: 'block', marginBottom: '4px' }}>AMOUNT PAID (J$)</label>
+                      <input type="number" value={row.amountPaid} onChange={e => upd(i, 'amountPaid', e.target.value)}
+                        placeholder="25000" style={S.input} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: C.muted, display: 'block', marginBottom: '4px' }}>PAYMENT DATE</label>
+                      <input type="date" value={row.paymentDate} onChange={e => upd(i, 'paymentDate', e.target.value)}
+                        style={S.input} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 600, color: C.muted, display: 'block', marginBottom: '4px' }}>YEARS COVERED</label>
+                      <input type="text" value={row.yearsCovered} onChange={e => upd(i, 'yearsCovered', e.target.value)}
+                        placeholder="2022, 2023" style={S.input} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '0.5rem' }}>
+                <button onClick={() => setRows(r => [...r, emptyRow()])} style={S.btnSecondary}>+ Add Record</button>
+                <button onClick={submit} disabled={submitting} style={{ ...S.btnPrimary, opacity: submitting ? 0.55 : 1 }}>
+                  {submitting ? 'Submitting…' : 'Submit Batch'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
