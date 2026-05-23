@@ -15,11 +15,12 @@ const PARISH_COORDS: Record<string,[number,number]> = {
   'Clarendon':[17.95,-77.25],'Manchester':[18.05,-77.5],'St. Elizabeth':[18.0,-77.75],
   'Westmoreland':[18.25,-78.15],'Hanover':[18.4,-78.13],'St. James':[18.47,-77.92],
   'Trelawny':[18.35,-77.6],'St. Ann':[18.43,-77.2],'St. Mary':[18.3,-76.9],
-  'Portland':[18.17,-76.45],'St. Thomas':[17.95,-76.35],
+  'Portland':[18.17,-76.45],'St. Thomas':[17.95,-76.35],'Portmore':[17.9167,-76.8833],
 };
 
 export default function CompliancePage() {
   const [tab, setTab] = useState<'map'|'analytics'>('map');
+  const [selectedArea, setSelectedArea] = useState<string>('ALL');
   const [selectedArea, setSelectedArea] = useState<string>('ALL');
   const [MapComponents, setMapComponents] = useState<any>(null);
 
@@ -113,6 +114,20 @@ export default function CompliancePage() {
       {tab==='map' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
           {/* Legend */}
+          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
+            <label style={{ fontSize:'0.8rem', color:'#6b7280', fontWeight:600 }}>OPERATIONAL AREA</label>
+            <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
+              style={{ padding:'0.35rem 0.75rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'0.85rem', background:'#fff', cursor:'pointer' }}>
+              <option value="ALL">All Areas</option>
+              {Object.keys(PARISH_COORDS).map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            {selectedArea !== 'ALL' && (
+              <button onClick={() => setSelectedArea('ALL')}
+                style={{ padding:'0.3rem 0.75rem', borderRadius:'6px', border:'1px solid #6b7280', background:'transparent', color:'#6b7280', fontSize:'0.8rem', cursor:'pointer' }}>
+                ✕ Clear
+              </button>
+            )}
+          </div>
           <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
             <label style={{ fontSize:'0.8rem', color:'#6b7280', fontWeight:600 }}>OPERATIONAL AREA</label>
             <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
