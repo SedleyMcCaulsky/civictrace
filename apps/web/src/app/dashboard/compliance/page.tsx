@@ -20,6 +20,7 @@ const PARISH_COORDS: Record<string,[number,number]> = {
 
 export default function CompliancePage() {
   const [tab, setTab] = useState<'map'|'analytics'>('map');
+  const [selectedArea, setSelectedArea] = useState<string>('ALL');
   const [MapComponents, setMapComponents] = useState<any>(null);
 
   const { data: cases } = useQuery({
@@ -112,6 +113,20 @@ export default function CompliancePage() {
       {tab==='map' && (
         <div style={{ display:'flex', flexDirection:'column', gap:'1rem' }}>
           {/* Legend */}
+          <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px' }}>
+            <label style={{ fontSize:'0.8rem', color:'#6b7280', fontWeight:600 }}>OPERATIONAL AREA</label>
+            <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
+              style={{ padding:'0.35rem 0.75rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'0.85rem', background:'#fff', cursor:'pointer' }}>
+              <option value="ALL">All Areas</option>
+              {Object.keys(PARISH_COORDS).map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+            {selectedArea !== 'ALL' && (
+              <button onClick={() => setSelectedArea('ALL')}
+                style={{ padding:'0.3rem 0.75rem', borderRadius:'6px', border:'1px solid #6b7280', background:'transparent', color:'#6b7280', fontSize:'0.8rem', cursor:'pointer' }}>
+                ✕ Clear
+              </button>
+            )}
+          </div>
           <div style={{ ...S.card, padding:'10px 16px', display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
             <span style={{ ...S.tiny, marginRight:'8px', marginBottom:0 }}>Intensity:</span>
             {LEGEND.map(l => (
@@ -131,9 +146,13 @@ export default function CompliancePage() {
             ) : (
               <>
                 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-                <MapComponents.MapContainer center={[18.1096,-77.2975]} zoom={9} style={{ height:'100%', width:'100%' }}>
+                <MapComponents.MapContainer
+                    key={selectedArea}
+                    center={selectedArea !== 'ALL' && PARISH_COORDS[selectedArea] ? PARISH_COORDS[selectedArea] : [18.1096,-77.2975]}
+                    zoom={selectedArea !== 'ALL' ? 12 : 9}
+                    style={{ height:'100%', width:'100%' }}>
                   <MapComponents.TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="© OpenStreetMap contributors" />
-                  {parishData.filter((p: any) => p.coords).map((p: any) => (
+                  {parishData.filter((p: any) => p.coords && (selectedArea === 'ALL' || p.parish === selectedArea)).map((p: any) => (
                     <MapComponents.CircleMarker key={p.parish} center={p.coords}
                       radius={Math.max(10, Math.min(40, (p.outstanding/maxOut)*40))}
                       pathOptions={{ color:riskColor(p.outstanding), fillColor:riskColor(p.outstanding), fillOpacity:0.6, weight:2 }}>
@@ -147,7 +166,7 @@ export default function CompliancePage() {
                       </MapComponents.Popup>
                     </MapComponents.CircleMarker>
                   ))}
-                  {list.filter((c: any) => c.gps_lat && c.gps_lng).map((c: any) => (
+                  {list.filter((c: any) => c.gps_lat && c.gps_lng && (selectedArea === 'ALL' || c.parish === selectedArea || c.area_name === selectedArea)).map((c: any) => (
                     <MapComponents.Marker key={c.id} position={[c.gps_lat, c.gps_lng]}>
                       <MapComponents.Popup>
                         <p style={{ fontFamily:F.display, fontWeight:700, margin:0 }}>{c.composite_key}</p>
