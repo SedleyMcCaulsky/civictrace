@@ -21,7 +21,6 @@ const PARISH_COORDS: Record<string,[number,number]> = {
 export default function CompliancePage() {
   const [tab, setTab] = useState<'map'|'analytics'>('map');
   const [selectedArea, setSelectedArea] = useState<string>('ALL');
-  const [selectedArea, setSelectedArea] = useState<string>('ALL');
   const [MapComponents, setMapComponents] = useState<any>(null);
 
   const { data: cases } = useQuery({
