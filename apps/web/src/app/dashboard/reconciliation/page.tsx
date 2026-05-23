@@ -142,6 +142,7 @@ export default function ReconciliationPage() {
         records: rows.map(r => ({
           rawAreaCode: r.rawAreaCode,
           rawValuationNumber: r.rawValuationNumber,
+          rawOwnerName: r.ownerName,
           amountPaid: parseFloat(r.amountPaid),
           paymentDate: r.paymentDate,
           yearsCovered: r.yearsCovered.split(',').map(y => parseInt(y.trim())).filter(Boolean),

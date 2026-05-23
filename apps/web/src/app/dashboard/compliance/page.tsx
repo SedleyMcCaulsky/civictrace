@@ -117,7 +117,7 @@ export default function CompliancePage() {
             <select value={selectedArea} onChange={e => setSelectedArea(e.target.value)}
               style={{ padding:'0.35rem 0.75rem', borderRadius:'6px', border:'1px solid #d1d5db', fontSize:'0.85rem', background:'#fff', cursor:'pointer' }}>
               <option value="ALL">All Areas</option>
-              {Object.keys(PARISH_COORDS).map(p => <option key={p} value={p}>{p}</option>)}
+              {Object.keys(PARISH_COORDS).filter(p => parishData.some((d: any) => d.parish === p)).map(p => <option key={p} value={p}>{p}</option>)}
             </select>
             {selectedArea !== 'ALL' && (
               <button onClick={() => setSelectedArea('ALL')}
