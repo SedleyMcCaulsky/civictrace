@@ -53,7 +53,7 @@ export class ComplianceAgentController {
   }
 
   @Delete('queue/clear')
-  @RequirePermissions('cases:create')
+  @RequirePermissions('agent:manage')
   @ApiOperation({ summary: 'Clear rejected and executed queue items' })
   async clearQueue(@Query('status') status: string) {
     return this.service.clearQueue(status);
