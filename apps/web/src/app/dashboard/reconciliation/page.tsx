@@ -107,6 +107,9 @@ export default function ReconciliationPage() {
   const [rows, setRows] = useState<RecRow[]>([emptyRow()]);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [selectedBatch, setSelectedBatch] = useState<any>(null);
+  const [batchDetail, setBatchDetail] = useState<any>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   const { data: batches, refetch } = useQuery({
     queryKey: ['batches'],
@@ -153,6 +156,16 @@ export default function ReconciliationPage() {
     finally { setSubmitting(false); }
   }
 
+  async function openBatch(b: any) {
+    setSelectedBatch(b);
+    setLoadingDetail(true);
+    try {
+      const res = await api.get(`/reconciliation/batch/${b.id}`);
+      setBatchDetail(res.data);
+    } catch { setBatchDetail(null); }
+    finally { setLoadingDetail(false); }
+  }
+
   return (
     <div style={S.page}>
       <div style={{ ...S.pageHeader, marginBottom: '1.5rem' }}>
@@ -187,7 +200,7 @@ export default function ReconciliationPage() {
             </tr></thead>
             <tbody>
               {batches.map((b: any) => (
-                <tr key={b.id}
+                <tr key={b.id} onClick={() => openBatch(b)} style={{ cursor: 'pointer' }}
                   onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}>
                   <td style={{ ...S.td, fontFamily: F.display, fontWeight: 700 }}>{b.batch_reference}</td>
@@ -265,6 +278,88 @@ export default function ReconciliationPage() {
                   {submitting ? 'Submitting…' : 'Submit Batch'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedBatch && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(13,19,38,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200, padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '860px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.22)' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1.5px solid #e5e7eb' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>{selectedBatch.batch_reference}</h2>
+                <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#6b7280' }}>
+                  Period: {new Date(selectedBatch.report_period_start).toLocaleDateString()} → {new Date(selectedBatch.report_period_end).toLocaleDateString()}
+                </p>
+              </div>
+              <button onClick={() => { setSelectedBatch(null); setBatchDetail(null); }}
+                style={{ background: '#f3f4f6', border: 'none', borderRadius: '8px', width: '32px', height: '32px', cursor: 'pointer', fontSize: '1.2rem', color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            </div>
+
+            {/* Summary Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', padding: '1.25rem 1.5rem', borderBottom: '1.5px solid #e5e7eb' }}>
+              {[
+                { label: 'Total Records', value: selectedBatch.total_records, color: '#3b82f6' },
+                { label: 'Matched', value: selectedBatch.matched_count, color: '#16a34a' },
+                { label: 'Unmatched', value: selectedBatch.unmatched_count, color: '#dc2626' },
+                { label: 'Total Amount', value: `J$${Number(selectedBatch.total_amount || 0).toLocaleString()}`, color: '#d97706' },
+              ].map(s => (
+                <div key={s.label} style={{ background: '#f9fafb', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '0.875rem 1rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.06em', marginBottom: '4px' }}>{s.label}</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: s.color }}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Records Table */}
+            <div style={{ padding: '1.25rem 1.5rem' }}>
+              <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 700 }}>Payment Records</h3>
+              {loadingDetail ? (
+                <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>Loading records…</p>
+              ) : !batchDetail?.records?.length ? (
+                <p style={{ color: '#9ca3af', fontSize: '0.85rem', textAlign: 'center', padding: '2rem' }}>No records found.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ background: '#1e293b' }}>
+                      {['Valuation No.', 'Owner / Address', 'Amount Paid', 'Years', 'Status', 'Match Confidence'].map(h => (
+                        <th key={h} style={{ padding: '8px 12px', textAlign: 'left', color: '#fff', fontWeight: 700, fontSize: '0.72rem', letterSpacing: '0.05em' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {batchDetail.records.map((r: any, i: number) => (
+                      <tr key={r.id} style={{ background: i % 2 === 0 ? '#f9fafb' : '#fff', borderBottom: '1px solid #e5e7eb' }}>
+                        <td style={{ padding: '9px 12px', fontWeight: 700, fontFamily: 'monospace' }}>
+                          {r.composite_key || r.raw_valuation_number || '—'}
+                        </td>
+                        <td style={{ padding: '9px 12px', color: '#374151' }}>
+                          <div>{r.raw_owner_name || '—'}</div>
+                          {r.property_address && <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{r.property_address}</div>}
+                        </td>
+                        <td style={{ padding: '9px 12px', fontWeight: 700, color: '#16a34a' }}>
+                          J${Number(r.amount_paid || 0).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '9px 12px', color: '#374151' }}>
+                          {Array.isArray(r.years_covered) ? r.years_covered.join(', ') : r.years_covered || '—'}
+                        </td>
+                        <td style={{ padding: '9px 12px' }}>
+                          <span style={{
+                            padding: '3px 8px', borderRadius: '5px', fontSize: '0.7rem', fontWeight: 700,
+                            background: r.status === 'MATCHED' ? '#dcfce7' : '#fee2e2',
+                            color: r.status === 'MATCHED' ? '#16a34a' : '#dc2626'
+                          }}>{r.status}</span>
+                        </td>
+                        <td style={{ padding: '9px 12px', color: '#6b7280' }}>
+                          {r.status === 'MATCHED' ? '100%' : '0%'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
