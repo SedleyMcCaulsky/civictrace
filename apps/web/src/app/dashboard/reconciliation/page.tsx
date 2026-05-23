@@ -36,7 +36,7 @@ function CaseSearch({ onSelect }: { onSelect: (c: any) => void }) {
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await api.get('/cases', { params: { search: q, limit: 8 } });
+        const res = await api.get('/cases', { params: { ownerName: q, limit: 8 } });
         setResults(res.data?.data || []);
         setOpen(true);
       } catch { setResults([]); }
