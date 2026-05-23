@@ -37,6 +37,10 @@ export default function AgentPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['agent-queue'] }); qc.invalidateQueries({ queryKey: ['agent-stats'] }); },
   });
 
+  const clearMutation = useMutation({
+    mutationFn: async (status: string) => (await api.delete(`/agent/queue/clear`, { params: { status } })).data,
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['agent-queue'] }); qc.invalidateQueries({ queryKey: ['agent-stats'] }); },
+  });
   const rejectMutation = useMutation({
     mutationFn: async ({ id, n }: any) => (await api.post(`/agent/queue/${id}/reject`, { notes: n })).data,
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['agent-queue'] }); qc.invalidateQueries({ queryKey: ['agent-stats'] }); },
@@ -71,6 +75,20 @@ export default function AgentPage() {
             <span style={{ ...badge('purple'), padding:'4px 10px' }}>AI-Powered</span>
           </div>
           <p style={S.muted}>Nightly AI analysis — review and approve recommended enforcement actions</p>
+          <div style={{ display:'flex', gap:'0.5rem', marginTop:'0.75rem' }}>
+            <button onClick={() => { if(confirm('Clear all REJECTED items?')) clearMutation.mutate('REJECTED'); }} disabled={clearMutation.isPending}
+              style={{ padding:'0.4rem 1rem', borderRadius:'6px', border:'1px solid #dc2626', background:'transparent', color:'#dc2626', cursor:'pointer', fontSize:'0.8rem' }}>
+              Clear Rejected
+            </button>
+            <button onClick={() => { if(confirm('Clear all EXECUTED items?')) clearMutation.mutate('EXECUTED'); }} disabled={clearMutation.isPending}
+              style={{ padding:'0.4rem 1rem', borderRadius:'6px', border:'1px solid #6b7280', background:'transparent', color:'#6b7280', cursor:'pointer', fontSize:'0.8rem' }}>
+              Clear Executed
+            </button>
+            <button onClick={() => { if(confirm('Clear ALL completed items (rejected + executed)?')) clearMutation.mutate('ALL'); }} disabled={clearMutation.isPending}
+              style={{ padding:'0.4rem 1rem', borderRadius:'6px', border:'1px solid #1a3d2b', background:'#1a3d2b', color:'#fff', cursor:'pointer', fontSize:'0.8rem' }}>
+              Clear All Completed
+            </button>
+          </div>
         </div>
         <button onClick={runAgent} disabled={running}
           style={{ ...S.btnPrimary, background:'#7C3AED', padding:'10px 20px', opacity:running?0.6:1 }}>

@@ -362,4 +362,18 @@ Recommend the single best action. Return JSON only.`;
     `);
     return stats;
   }
+
+  async clearQueue(status?: string): Promise<{ cleared: number }> {
+    const allowed = ['REJECTED', 'EXECUTED'];
+    const target = status && allowed.includes(status.toUpperCase())
+      ? [status.toUpperCase()]
+      : allowed;
+    const placeholders = target.map((_, i) => `$${i + 1}`).join(', ');
+    const result = await this.db.query(
+      `DELETE FROM registry.agent_action_queue WHERE status IN (${placeholders}) RETURNING id`,
+      target
+    );
+    return { cleared: result.length };
+  }
+
 }

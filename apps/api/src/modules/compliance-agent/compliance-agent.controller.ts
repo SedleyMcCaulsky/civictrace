@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, Request } from '@nestjs/common';
+import { Delete, Controller, Get, Post, Patch, Body, Param, Query, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ComplianceAgentService } from './compliance-agent.service';
 import { RequirePermissions } from '../../shared/guards/permissions.guard';
@@ -51,4 +51,12 @@ export class ComplianceAgentController {
   ) {
     return this.service.rejectQueueItem(id, req.user.sub, notes);
   }
+
+  @Delete('queue/clear')
+  @RequirePermissions('agent:manage')
+  @ApiOperation({ summary: 'Clear rejected and executed queue items' })
+  async clearQueue(@Query('status') status: string) {
+    return this.service.clearQueue(status);
+  }
+
 }
