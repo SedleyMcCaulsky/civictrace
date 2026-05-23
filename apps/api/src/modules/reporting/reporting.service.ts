@@ -351,7 +351,7 @@ export class ReportingService {
     reconSheet.columns = [{ width: 30 }, { width: 15 }, { width: 15 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 18 }, { width: 12 }, { width: 25 }];
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="civictrace-report-${Date.now()}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="valugrid-report-${Date.now()}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   }
