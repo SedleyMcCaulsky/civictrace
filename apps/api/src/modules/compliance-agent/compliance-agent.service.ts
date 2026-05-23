@@ -364,7 +364,7 @@ Recommend the single best action. Return JSON only.`;
   }
 
   async clearQueue(status?: string): Promise<{ cleared: number }> {
-    const allowed = ['REJECTED', 'EXECUTED'];
+    const allowed = ['REJECTED', 'EXECUTED', 'PENDING'];
     const target = status && allowed.includes(status.toUpperCase())
       ? [status.toUpperCase()]
       : allowed;

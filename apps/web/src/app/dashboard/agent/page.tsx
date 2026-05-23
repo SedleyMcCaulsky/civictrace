@@ -76,6 +76,10 @@ export default function AgentPage() {
           </div>
           <p style={S.muted}>Nightly AI analysis — review and approve recommended enforcement actions</p>
           <div style={{ display:'flex', gap:'0.5rem', marginTop:'0.75rem' }}>
+            <button onClick={() => { if(confirm('Clear all PENDING items? This cannot be undone.')) clearMutation.mutate('PENDING'); }} disabled={clearMutation.isPending}
+              style={{ padding:'0.4rem 1rem', borderRadius:'6px', border:'1px solid #d97706', background:'transparent', color:'#d97706', cursor:'pointer', fontSize:'0.8rem' }}>
+              Clear Pending
+            </button>
             <button onClick={() => { if(confirm('Clear all REJECTED items?')) clearMutation.mutate('REJECTED'); }} disabled={clearMutation.isPending}
               style={{ padding:'0.4rem 1rem', borderRadius:'6px', border:'1px solid #dc2626', background:'transparent', color:'#dc2626', cursor:'pointer', fontSize:'0.8rem' }}>
               Clear Rejected
