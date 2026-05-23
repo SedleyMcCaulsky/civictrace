@@ -67,6 +67,30 @@ export class ReconciliationService {
             officerId,
           ],
         );
+
+        // Write-back: update tax_balance for each matched year
+        if (status === 'MATCHED' && propertyCase?.id && record.yearsCovered?.length) {
+          const perYearAmount = record.amountPaid / record.yearsCovered.length;
+          for (const yr of record.yearsCovered) {
+            await queryRunner.query(
+              `UPDATE registry.tax_balance
+               SET amount_paid        = LEAST(amount_due, amount_paid + $1),
+                   balance            = GREATEST(0, amount_due - LEAST(amount_due, amount_paid + $1)),
+                   status             = CASE
+                                         WHEN LEAST(amount_due, amount_paid + $1) >= amount_due
+                                           THEN 'PAID'::registry.balance_status
+                                         WHEN LEAST(amount_due, amount_paid + $1) > 0
+                                           THEN 'PARTIAL'::registry.balance_status
+                                         ELSE status
+                                       END,
+                   last_reconciled_at = NOW(),
+                   updated_at         = NOW()
+               WHERE property_case_id = $2
+                 AND tax_year         = $3`,
+              [perYearAmount, propertyCase.id, yr],
+            );
+          }
+        }
       }
 
       const totalAmount = dto.records.reduce((s, r) => s + r.amountPaid, 0);
