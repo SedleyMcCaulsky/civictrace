@@ -30,8 +30,8 @@ export class PropertyCaseController {
   @Get()
   @RequirePermissions('cases:read')
   @ApiOperation({ summary: 'Search property cases' })
-  async searchCases(@Query() dto: SearchCasesDto) {
-    return this.service.searchCases(dto);
+  async searchCases(@Query() dto: SearchCasesDto, @Request() req: any) {
+    return this.service.searchCases(dto, req.user.organisationId);
   }
 
   @Get('areas')
