@@ -39,7 +39,7 @@ export class ComplianceAgentService {
     return now.getMonth() + 1 >= 4 ? `${y}-${y + 1}` : `${y - 1}-${y}`;
   }
 
-  async getCasesForAnalysis(): Promise<any[]> {
+  async getCasesForAnalysis(organisationId?: string,): Promise<any[]> {
     const fy = this.getCurrentFY();
     const fyStart = fy.split('-')[0] + '-04-01';
     const fyEnd = (parseInt(fy.split('-')[1])) + '-03-31';
@@ -102,6 +102,7 @@ export class ComplianceAgentService {
       WHERE pc.deleted_at IS NULL
         AND ccs.status = 'DELINQUENT'
         AND COALESCE(ccs.total_outstanding, 0) > 0
+        AND ($4::uuid IS NULL OR pc.organisation_id = $4::uuid)
 
       GROUP BY pc.id, pc.composite_key, pc.owner_name_search, pc.property_address,
                pc.property_type, pc.is_strata, a.name, a.parish, a.region,
@@ -115,7 +116,7 @@ export class ComplianceAgentService {
 
       ORDER BY ccs.total_outstanding DESC NULLS LAST
       LIMIT 50
-    `, [fyStart, fyEnd, fy]);
+    `, [fyStart, fyEnd, fy, organisationId || null]);
   }
 
   async analyseCase(caseData: any): Promise<any> {
@@ -286,9 +287,9 @@ Recommend the single best action. Return JSON only.`;
     }
   }
 
-  async runNightlyAgent(): Promise<{ analysed: number; queued: number; skipped: number }> {
+  async runNightlyAgent(organisationId?: string): Promise<{ analysed: number; queued: number; skipped: number }> {
     this.logger.log('Compliance Agent starting nightly run...');
-    const cases = await this.getCasesForAnalysis();
+    const cases = await this.getCasesForAnalysis(organisationId);
     this.logger.log(`Found ${cases.length} cases to analyse`);
 
     let queued = 0;
@@ -315,7 +316,7 @@ Recommend the single best action. Return JSON only.`;
     return { analysed: cases.length, queued, skipped };
   }
 
-  async getQueue(status?: string): Promise<any[]> {
+  async getQueue(status?: string, organisationId?: string): Promise<any[]> {
     let q = `
       SELECT aq.*, u.full_name as reviewed_by_name
       FROM registry.agent_action_queue aq
@@ -324,6 +325,7 @@ Recommend the single best action. Return JSON only.`;
     `;
     const params: any[] = [];
     if (status) { params.push(status); q += ` AND aq.status = $${params.length}`; }
+    if (organisationId) { params.push(organisationId); q += ` AND aq.organisation_id = $${params.length}`; }
     q += ` ORDER BY aq.created_at DESC LIMIT 200`;
     return this.db.query(q, params);
   }
@@ -348,7 +350,7 @@ Recommend the single best action. Return JSON only.`;
     return { message: 'Rejected', id };
   }
 
-  async getQueueStats(): Promise<any> {
+  async getQueueStats(organisationId?: string): Promise<any> {
     const stats = await this.db.query(`
       SELECT
         status,
@@ -357,13 +359,14 @@ Recommend the single best action. Return JSON only.`;
         SUM(total_outstanding) as total_outstanding
       FROM registry.agent_action_queue
       WHERE run_date >= CURRENT_DATE - INTERVAL '30 days'
+        AND ($1::uuid IS NULL OR organisation_id = $1::uuid)
       GROUP BY status, recommended_action
       ORDER BY status, count DESC
-    `);
+    `, [organisationId || null]);
     return stats;
   }
 
-  async clearQueue(status?: string): Promise<{ cleared: number }> {
+  async clearQueue(status?: string, organisationId?: string): Promise<{ cleared: number }> {
     const allowed = ['REJECTED', 'EXECUTED', 'PENDING'];
     const target = status && allowed.includes(status.toUpperCase())
       ? [status.toUpperCase()]

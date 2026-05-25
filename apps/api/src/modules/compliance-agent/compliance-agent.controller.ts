@@ -12,22 +12,22 @@ export class ComplianceAgentController {
   @Post('run')
   @RequirePermissions('cases:create')
   @ApiOperation({ summary: 'Trigger nightly compliance agent run manually' })
-  async runAgent() {
-    return this.service.runNightlyAgent();
+  async runAgent(@Request() req: any) {
+    return this.service.runNightlyAgent(req.user.organisationId);
   }
 
   @Get('queue')
   @RequirePermissions('cases:read')
   @ApiOperation({ summary: 'Get agent action queue' })
-  async getQueue(@Query('status') status?: string) {
-    return this.service.getQueue(status);
+  async getQueue(@Query('status') status?: string, @Request() req: any) {
+    return this.service.getQueue(status, req.user.organisationId);
   }
 
   @Get('queue/stats')
   @RequirePermissions('cases:read')
   @ApiOperation({ summary: 'Get queue statistics' })
-  async getStats() {
-    return this.service.getQueueStats();
+  async getStats(@Request() req: any) {
+    return this.service.getQueueStats(req.user.organisationId);
   }
 
   @Post('queue/:id/approve')
@@ -55,8 +55,8 @@ export class ComplianceAgentController {
   @Delete('queue/clear')
   @RequirePermissions('agent:manage')
   @ApiOperation({ summary: 'Clear rejected and executed queue items' })
-  async clearQueue(@Query('status') status: string) {
-    return this.service.clearQueue(status);
+  async clearQueue(@Query('status') status: string, @Request() req: any) {
+    return this.service.clearQueue(status, req.user.organisationId);
   }
 
 }
