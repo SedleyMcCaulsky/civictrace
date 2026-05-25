@@ -31,11 +31,11 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       login: (token, user) => {
-        localStorage.setItem('civictrace_token', token);
+        localStorage.setItem('valugrid_token', token);
         set({ token, user, isAuthenticated: true });
       },
       logout: () => {
-        localStorage.removeItem('civictrace_token');
+        localStorage.removeItem('valugrid_token');
         set({ token: null, user: null, isAuthenticated: false });
       },
       hasPermission: (permission: string) => {

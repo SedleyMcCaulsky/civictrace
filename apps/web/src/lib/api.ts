@@ -8,7 +8,7 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('civictrace_token');
+    const token = localStorage.getItem('valugrid_token');
     if (token) config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -19,7 +19,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('civictrace_token');
+        localStorage.removeItem('valugrid_token');
         window.location.href = '/login';
       }
     }
