@@ -1,7 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 
-const TOKEN_KEY = 'civictrace_token';
-const USER_KEY = 'civictrace_user';
+const TOKEN_KEY = 'valugrid_token';
+const USER_KEY = 'valugrid_user';
 
 export interface User {
   id: string;

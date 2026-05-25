@@ -4,7 +4,7 @@ let db: SQLite.SQLiteDatabase;
 
 export function getDb(): SQLite.SQLiteDatabase {
   if (!db) {
-    db = SQLite.openDatabaseSync('civictrace_local.db');
+    db = SQLite.openDatabaseSync('valugrid_local.db');
   }
   return db;
 }
