@@ -39,8 +39,8 @@ export default function LoginScreen({ onLoginSuccess }: Props) {
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={styles.card}>
-        <Text style={styles.title}>CivicTrace</Text>
-        <Text style={styles.subtitle}>Property Tax Compliance Platform</Text>
+        <Text style={styles.title}>ValuGrid</Text>
+        <Text style={styles.subtitle}>Compliance Intelligence Platform</Text>
         <Text style={styles.label}>Email</Text>
         <TextInput style={styles.input} value={email} onChangeText={setEmail}
           placeholder="officer@taxauth.gov.jm" keyboardType="email-address" autoCapitalize="none" />
