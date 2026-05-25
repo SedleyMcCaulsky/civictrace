@@ -118,8 +118,9 @@ export class PropertyCaseService {
     }
   }
 
-  async searchCases(dto: SearchCasesDto) {
+  async searchCases(dto: SearchCasesDto, organisationId?: string) {
     const conditions: string[] = ['pc.deleted_at IS NULL'];
+    if (organisationId) { conditions.push(`pc.organisation_id = '${organisationId}'`); }
     const params: any[] = [];
     let paramIndex = 1;
 
