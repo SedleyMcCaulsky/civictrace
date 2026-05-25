@@ -41,6 +41,7 @@ export class ReportingController {
     @Query('areaId') areaId: string,
     @Query('from') from: string,
     @Query('to') to: string,
+    @Request() req: any,
   ) {
     const today = new Date().toISOString().split('T')[0];
     return this.service.getDeliveryCompletionReport(areaId, from || '2024-01-01', to || today);
@@ -50,7 +51,7 @@ export class ReportingController {
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Outstanding balance report by area' })
   @ApiQuery({ name: 'parish', required: false })
-  async getOutstanding(@Query('parish') parish?: string) {
+  async getOutstanding(@Query('parish') parish?: string, @Request() req: any) {
     return this.service.getOutstandingBalanceReport(parish);
   }
 
@@ -62,6 +63,7 @@ export class ReportingController {
   async getPaymentConversion(
     @Query('from') from: string,
     @Query('to') to: string,
+    @Request() req: any,
   ) {
     const today = new Date().toISOString().split('T')[0];
     return this.service.getPaymentConversionReport(from || '2024-01-01', to || today);
@@ -71,16 +73,16 @@ export class ReportingController {
   @RequirePermissions('reports:generate')
   @ApiOperation({ summary: 'Export outstanding balance report as PDF' })
   @ApiQuery({ name: 'parish', required: false })
-  async exportPDF(@Query('parish') parish: string, @Res() res: Response) {
-    return this.service.exportOutstandingBalancePDF(res, parish);
+  async exportPDF(@Query('parish') parish: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportOutstandingBalancePDF(res, parish, req.user.organisationId);
   }
 
   @Get('outstanding/export/excel')
   @RequirePermissions('reports:generate')
   @ApiOperation({ summary: 'Export outstanding balance + payment conversion as Excel' })
   @ApiQuery({ name: 'parish', required: false })
-  async exportExcel(@Query('parish') parish: string, @Res() res: Response) {
-    return this.service.exportOutstandingBalanceExcel(res, parish);
+  async exportExcel(@Query('parish') parish: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportOutstandingBalanceExcel(res, parish, req.user.organisationId);
   }
 
   @Post('email/test')
@@ -104,48 +106,48 @@ export class ReportingController {
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Export summons report as PDF' })
   @ApiQuery({ name: 'financialYear', required: false })
-  async exportSummonsPDF(@Query('financialYear') financialYear: string, @Res() res: Response) {
-    return this.service.exportSummonsPDF(res, financialYear);
+  async exportSummonsPDF(@Query('financialYear') financialYear: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportSummonsPDF(res, financialYear, req.user.organisationId);
   }
 
   @Get('summons/export/excel')
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Export summons report as Excel' })
   @ApiQuery({ name: 'financialYear', required: false })
-  async exportSummonsExcel(@Query('financialYear') financialYear: string, @Res() res: Response) {
-    return this.service.exportSummonsExcel(res, financialYear);
+  async exportSummonsExcel(@Query('financialYear') financialYear: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportSummonsExcel(res, financialYear, req.user.organisationId);
   }
 
   @Get('relief/export/pdf')
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Export discretionary relief report as PDF' })
   @ApiQuery({ name: 'financialYear', required: false })
-  async exportReliefPDF(@Query('financialYear') financialYear: string, @Res() res: Response) {
-    return this.service.exportReliefPDF(res, financialYear);
+  async exportReliefPDF(@Query('financialYear') financialYear: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportReliefPDF(res, financialYear, req.user.organisationId);
   }
 
   @Get('relief/export/excel')
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Export discretionary relief report as Excel' })
   @ApiQuery({ name: 'financialYear', required: false })
-  async exportReliefExcel(@Query('financialYear') financialYear: string, @Res() res: Response) {
-    return this.service.exportReliefExcel(res, financialYear);
+  async exportReliefExcel(@Query('financialYear') financialYear: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportReliefExcel(res, financialYear, req.user.organisationId);
   }
 
   @Get('collections/export/pdf')
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Export overall collections report as PDF' })
   @ApiQuery({ name: 'financialYear', required: false })
-  async exportCollectionsPDF(@Query('financialYear') financialYear: string, @Res() res: Response) {
-    return this.service.exportCollectionsPDF(res, financialYear);
+  async exportCollectionsPDF(@Query('financialYear') financialYear: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportCollectionsPDF(res, financialYear, req.user.organisationId);
   }
 
   @Get('collections/export/excel')
   @RequirePermissions('reports:view')
   @ApiOperation({ summary: 'Export overall collections report as Excel' })
   @ApiQuery({ name: 'financialYear', required: false })
-  async exportCollectionsExcel(@Query('financialYear') financialYear: string, @Res() res: Response) {
-    return this.service.exportCollectionsExcel(res, financialYear);
+  async exportCollectionsExcel(@Query('financialYear') financialYear: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportCollectionsExcel(res, financialYear, req.user.organisationId);
   }
 
   @Get('arrears/export/pdf')
@@ -153,8 +155,8 @@ export class ReportingController {
   @ApiOperation({ summary: 'Export arrears report as PDF' })
   @ApiQuery({ name: 'financialYear', required: false })
   @ApiQuery({ name: 'parish', required: false })
-  async exportArrearsPDF(@Query('financialYear') financialYear: string, @Query('parish') parish: string, @Res() res: Response) {
-    return this.service.exportArrearsPDF(res, financialYear, parish);
+  async exportArrearsPDF(@Query('financialYear') financialYear: string, @Query('parish') parish: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportArrearsPDF(res, financialYear, parish, req.user.organisationId);
   }
 
   @Get('arrears/export/excel')
@@ -162,8 +164,8 @@ export class ReportingController {
   @ApiOperation({ summary: 'Export arrears report as Excel' })
   @ApiQuery({ name: 'financialYear', required: false })
   @ApiQuery({ name: 'parish', required: false })
-  async exportArrearsExcel(@Query('financialYear') financialYear: string, @Query('parish') parish: string, @Res() res: Response) {
-    return this.service.exportArrearsExcel(res, financialYear, parish);
+  async exportArrearsExcel(@Query('financialYear') financialYear: string, @Query('parish') parish: string, @Res() res: Response, @Request() req: any) {
+    return this.service.exportArrearsExcel(res, financialYear, parish, req.user.organisationId);
   }
 
 }

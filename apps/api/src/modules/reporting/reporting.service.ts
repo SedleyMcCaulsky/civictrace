@@ -209,7 +209,7 @@ export class ReportingService {
   }
 
   // ── PDF EXPORT ────────────────────────────────────────────────────
-  async exportOutstandingBalancePDF(res: Response, parish?: string) {
+  async exportOutstandingBalancePDF(res: Response, parish?: string, organisationId?: string) {
     const report = await this.getOutstandingBalanceReport(parish);
     const doc = new PDFDocument({ margin: 50 });
 
@@ -266,7 +266,7 @@ export class ReportingService {
   }
 
   // ── EXCEL EXPORT ──────────────────────────────────────────────────
-  async exportOutstandingBalanceExcel(res: Response, parish?: string) {
+  async exportOutstandingBalanceExcel(res: Response, parish?: string, organisationId?: string) {
     const report = await this.getOutstandingBalanceReport(parish);
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'ValuGrid';
@@ -357,7 +357,7 @@ export class ReportingService {
   }
 
   // ── SUMMONS REPORT ────────────────────────────────────────────────
-  async getSummonsData(financialYear?: string) {
+  async getSummonsData(financialYear?: string, organisationId?: string) {
     const fy = financialYear || '2024-2025';
     const rows = await this.db.query(`
       SELECT s.summons_number, s.financial_year, s.issued_date, s.court_date,
@@ -368,7 +368,8 @@ export class ReportingService {
       JOIN registry.property_case pc ON pc.id = s.property_case_id
       JOIN gis.area a ON a.id = pc.area_id
       WHERE s.financial_year = $1 AND pc.deleted_at IS NULL
-      ORDER BY s.issued_date DESC`, [fy]);
+      AND ($2::uuid IS NULL OR pc.organisation_id = $2::uuid)
+      ORDER BY s.issued_date DESC`, [fy, organisationId || null]);
     const totals = await this.db.query(`
       SELECT COUNT(*) as total,
              COUNT(*) FILTER (WHERE status = 'SERVED') as served,
@@ -381,7 +382,7 @@ export class ReportingService {
     return { rows, totals: totals[0], financialYear: fy };
   }
 
-  async exportSummonsPDF(res: Response, financialYear?: string) {
+  async exportSummonsPDF(res: Response, financialYear?: string, organisationId?: string) {
     const data = await this.getSummonsData(financialYear);
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
@@ -422,7 +423,7 @@ export class ReportingService {
     doc.end();
   }
 
-  async exportSummonsExcel(res: Response, financialYear?: string) {
+  async exportSummonsExcel(res: Response, financialYear?: string, organisationId?: string) {
     const data = await this.getSummonsData(financialYear);
     const workbook = new ExcelJS.Workbook(); workbook.creator = 'ValuGrid';
     const sheet = workbook.addWorksheet('Summons');
@@ -454,7 +455,7 @@ export class ReportingService {
   }
 
   // ── DISCRETIONARY RELIEF REPORT ───────────────────────────────────
-  async getReliefData(financialYear?: string) {
+  async getReliefData(financialYear?: string, organisationId?: string) {
     const fy = financialYear || '2024-2025';
     const rows = await this.db.query(`
       SELECT dr.application_date, dr.applicant_name, dr.relief_type,
@@ -465,7 +466,8 @@ export class ReportingService {
       JOIN registry.property_case pc ON pc.id = dr.property_case_id
       JOIN gis.area a ON a.id = pc.area_id
       WHERE dr.financial_year = $1 AND pc.deleted_at IS NULL
-      ORDER BY dr.application_date DESC`, [fy]);
+      AND ($2::uuid IS NULL OR pc.organisation_id = $2::uuid)
+      ORDER BY dr.application_date DESC`, [fy, organisationId || null]);
     const totals = await this.db.query(`
       SELECT COUNT(*) as total,
              COUNT(*) FILTER (WHERE status='APPROVED') as approved,
@@ -480,7 +482,7 @@ export class ReportingService {
     return { rows, totals: totals[0], financialYear: fy };
   }
 
-  async exportReliefPDF(res: Response, financialYear?: string) {
+  async exportReliefPDF(res: Response, financialYear?: string, organisationId?: string) {
     const data = await this.getReliefData(financialYear);
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
@@ -517,7 +519,7 @@ export class ReportingService {
     doc.end();
   }
 
-  async exportReliefExcel(res: Response, financialYear?: string) {
+  async exportReliefExcel(res: Response, financialYear?: string, organisationId?: string) {
     const data = await this.getReliefData(financialYear);
     const workbook = new ExcelJS.Workbook(); workbook.creator = 'ValuGrid';
     const sheet = workbook.addWorksheet('Discretionary Relief');
@@ -552,7 +554,7 @@ export class ReportingService {
   }
 
   // ── OVERALL COLLECTIONS REPORT ────────────────────────────────────
-  async getCollectionsData(financialYear?: string) {
+  async getCollectionsData(financialYear?: string, organisationId?: string) {
     const fy = financialYear || '2024-2025';
     const taxYear = parseInt(fy.split('-')[0]);
     const rows = await this.db.query(`
@@ -563,7 +565,8 @@ export class ReportingService {
       JOIN registry.property_case pc ON pc.id = tb.property_case_id
       JOIN gis.area a ON a.id = pc.area_id
       WHERE tb.tax_year = $1 AND pc.deleted_at IS NULL
-      ORDER BY tb.balance DESC`, [taxYear]);
+      AND ($2::uuid IS NULL OR pc.organisation_id = $2::uuid)
+      ORDER BY tb.balance DESC`, [taxYear, organisationId || null]);
     const totals = await this.db.query(`
       SELECT COUNT(DISTINCT pc.id) as total_cases,
              SUM(tb.amount_due) as total_levied,
@@ -579,7 +582,7 @@ export class ReportingService {
     return { rows, totals: totals[0], financialYear: fy, taxYear };
   }
 
-  async exportCollectionsPDF(res: Response, financialYear?: string) {
+  async exportCollectionsPDF(res: Response, financialYear?: string, organisationId?: string) {
     const data = await this.getCollectionsData(financialYear);
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
@@ -620,7 +623,7 @@ export class ReportingService {
     doc.end();
   }
 
-  async exportCollectionsExcel(res: Response, financialYear?: string) {
+  async exportCollectionsExcel(res: Response, financialYear?: string, organisationId?: string) {
     const data = await this.getCollectionsData(financialYear);
     const workbook = new ExcelJS.Workbook(); workbook.creator = 'ValuGrid';
     const sheet = workbook.addWorksheet('Collections');
@@ -656,7 +659,7 @@ export class ReportingService {
   }
 
   // ── ARREARS REPORT ────────────────────────────────────────────────
-  async getArrearsCasesData(financialYear?: string, parish?: string) {
+  async getArrearsCasesData(financialYear?: string, parish?: string, organisationId?: string) {
     const fy = financialYear || '2024-2025';
     const taxYear = parseInt(fy.split('-')[0]);
     let whereClause = 'WHERE tb.tax_year = $1 AND pc.deleted_at IS NULL AND tb.balance > 0';
@@ -688,7 +691,7 @@ export class ReportingService {
     return { rows, totals: totals[0], financialYear: fy, taxYear, parish };
   }
 
-  async exportArrearsPDF(res: Response, financialYear?: string, parish?: string) {
+  async exportArrearsPDF(res: Response, financialYear?: string, parish?: string, organisationId?: string) {
     const data = await this.getArrearsCasesData(financialYear, parish);
     const doc = new PDFDocument({ margin: 50, size: 'A4', layout: 'landscape' });
     res.setHeader('Content-Type', 'application/pdf');
@@ -729,7 +732,7 @@ export class ReportingService {
     doc.end();
   }
 
-  async exportArrearsExcel(res: Response, financialYear?: string, parish?: string) {
+  async exportArrearsExcel(res: Response, financialYear?: string, parish?: string, organisationId?: string) {
     const data = await this.getArrearsCasesData(financialYear, parish);
     const workbook = new ExcelJS.Workbook(); workbook.creator = 'ValuGrid';
     const sheet = workbook.addWorksheet('Arrears');
