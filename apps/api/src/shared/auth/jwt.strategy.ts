@@ -9,6 +9,7 @@ export interface JwtPayload {
   role: string;
   permissions: string[];
   deviceId?: string;
+  organisationId: string;
   isMobile: boolean;
   iat: number;
   exp: number;

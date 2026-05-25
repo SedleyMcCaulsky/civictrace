@@ -21,7 +21,7 @@ export class IdentityService {
   async login(dto: LoginDto) {
     const result = await this.db.query<any[]>(
       `SELECT u.id, u.email, u.full_name, u.is_active, u.is_field_officer,
-             u.region, u.password_hash, u.failed_login_attempts, u.locked_until, u.last_failed_at, r.name as role_name, r.role_type
+             u.region, u.organisation_id, u.password_hash, u.failed_login_attempts, u.locked_until, u.last_failed_at, r.name as role_name, r.role_type
       FROM identity.user u
        JOIN identity.role r ON r.id = u.role_id
        WHERE u.email = $1 AND u.deleted_at IS NULL LIMIT 1`,
@@ -76,10 +76,10 @@ export class IdentityService {
     );
     const permissionCodes = permissions.map((p: any) => p.code);
     await this.db.query(`UPDATE identity.user SET last_login_at = NOW() WHERE id = $1`, [user.id]);
-    const payload: any = { sub: user.id, email: user.email, role: user.role_name, roleType: user.role_type, permissions: permissionCodes, isMobile: false, deviceId: null };
+    const payload: any = { sub: user.id, email: user.email, role: user.role_name, roleType: user.role_type, permissions: permissionCodes, organisationId: user.organisation_id, isMobile: false, deviceId: null };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign({ sub: user.id } as any, { secret: this.configService.get<string>('jwt.refreshSecret') } as any);
-    return { accessToken, refreshToken, user: { id: user.id, email: user.email, fullName: user.full_name, role: user.role_name, permissions: permissionCodes, isFieldOfficer: user.is_field_officer, region: user.region } };
+    return { accessToken, refreshToken, user: { id: user.id, email: user.email, fullName: user.full_name, role: user.role_name, permissions: permissionCodes, organisationId: user.organisation_id, isFieldOfficer: user.is_field_officer, region: user.region } };
   }
 
   async createUser(dto: CreateUserDto, actorId: string) {
