@@ -75,7 +75,7 @@ export class SummonsService {
     );
   }
 
-  async getAllSummons(filters: { status?: string; financialYear?: string; parish?: string }) {
+  async getAllSummons(filters: { status?: string; financialYear?: string; parish?: string }, organisationId?: string) {
     let q = `SELECT s.id, s.summons_number, s.composite_key, s.owner_name, s.financial_year,
              s.issued_date, s.court_date, s.status, s.previous_summons_count, s.notes,
              a.name as area_name, a.parish, u.full_name as issued_by_name, ccs.total_outstanding
@@ -83,7 +83,9 @@ export class SummonsService {
        JOIN registry.property_case pc ON pc.id = s.property_case_id
        JOIN gis.area a ON a.id = pc.area_id
        LEFT JOIN compliance.case_compliance_status ccs ON ccs.property_case_id = pc.id
-       LEFT JOIN identity.user u ON u.id = s.issued_by WHERE 1=1`;
+       LEFT JOIN identity.user u ON u.id = s.issued_by WHERE 1=1
+       AND ($1::uuid IS NULL OR pc.organisation_id = $1::uuid)`;
+    const p: any[] = [organisationId || null];
     const p: any[] = [];
     if (filters.status)        { p.push(filters.status);        q += ` AND s.status = $${p.length}`; }
     if (filters.financialYear) { p.push(filters.financialYear); q += ` AND s.financial_year = $${p.length}`; }
@@ -99,7 +101,7 @@ export class SummonsService {
     return { message: 'Updated', id, status };
   }
 
-  async getEligibleCases(financialYear?: string) {
+  async getEligibleCases(financialYear?: string, organisationId?: string) {
     const fy = financialYear || this.getCurrentFY();
     const { start, end } = this.getFYDates(fy);
     return this.db.query(
@@ -113,6 +115,7 @@ export class SummonsService {
        LEFT JOIN delivery.notice_delivery nd ON nd.property_case_id = pc.id
          AND nd.delivered_at BETWEEN $1::date AND $2::date
        WHERE pc.deleted_at IS NULL AND ccs.total_outstanding > 0
+       AND ($1::uuid IS NULL OR pc.organisation_id = $1::uuid)
        GROUP BY pc.id, pc.composite_key, pc.owner_name_search, pc.property_address, a.name, a.parish, ccs.total_outstanding
        HAVING COUNT(nd.id) >= 2
        ORDER BY ccs.total_outstanding DESC`,
