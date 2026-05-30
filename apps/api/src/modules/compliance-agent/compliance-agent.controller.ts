@@ -2,6 +2,7 @@ import { Delete, Controller, Get, Post, Patch, Body, Param, Query, Request } fro
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ComplianceAgentService } from './compliance-agent.service';
 import { RequirePermissions } from '../../shared/guards/permissions.guard';
+import { Throttle } from '@nestjs/throttler';
 
 @ApiTags('Compliance Agent')
 @ApiBearerAuth()
@@ -10,6 +11,7 @@ export class ComplianceAgentController {
   constructor(private readonly service: ComplianceAgentService) {}
 
   @Post('run')
+  @Throttle({ long: { ttl: 3600000, limit: 1 } })
   @RequirePermissions('cases:create')
   @ApiOperation({ summary: 'Trigger nightly compliance agent run manually' })
   async runAgent(@Request() req: any) {

@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
 
 import appConfig from './config/app.config';
 import databaseConfig from './config/database.config';
@@ -36,7 +37,11 @@ import { AiModule } from './modules/ai/ai.module';
       load: [appConfig, databaseConfig, jwtConfig],
       envFilePath: '.env',
     }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    ThrottlerModule.forRoot([
+      { name: 'short',  ttl: 1000,  limit: 10  },
+      { name: 'medium', ttl: 10000, limit: 50  },
+      { name: 'long',   ttl: 60000, limit: 200 },
+    ]),
     EventEmitterModule.forRoot(),
     ScheduleModule.forRoot(),
     DatabaseModule,
@@ -56,6 +61,7 @@ import { AiModule } from './modules/ai/ai.module';
     AiModule,
   ],
   providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },

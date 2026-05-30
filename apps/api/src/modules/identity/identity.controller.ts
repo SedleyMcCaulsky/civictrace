@@ -16,6 +16,7 @@ import { IdentityService } from './identity.service';
 import { LoginDto } from './dto/login.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Public } from '../../shared/auth/jwt-auth.guard';
+import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '../../shared/guards/permissions.guard';
 
 @ApiTags('Identity')
@@ -24,6 +25,7 @@ export class IdentityController {
   constructor(private readonly identityService: IdentityService) {}
 
   @Public()
+  @Throttle({ short: { ttl: 60000, limit: 5 } })
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive JWT tokens' })

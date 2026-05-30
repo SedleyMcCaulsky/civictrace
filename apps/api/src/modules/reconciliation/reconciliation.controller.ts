@@ -4,6 +4,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ReconciliationService } from './reconciliation.service';
 import { SubmitReconciliationDto } from './dto/submit-reconciliation.dto';
+import { Throttle } from '@nestjs/throttler';
 import { RequirePermissions } from '../../shared/guards/permissions.guard';
 
 @ApiTags('Reconciliation')
@@ -12,6 +13,7 @@ import { RequirePermissions } from '../../shared/guards/permissions.guard';
 export class ReconciliationController {
   constructor(private readonly service: ReconciliationService) {}
 
+  @Throttle({ medium: { ttl: 60000, limit: 10 } })
   @Post('batch')
   @RequirePermissions('reconciliation:create')
   @ApiOperation({ summary: 'Submit a payment reconciliation batch' })
