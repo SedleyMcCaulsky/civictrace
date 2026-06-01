@@ -54,7 +54,7 @@ export default function AgentPage() {
       qc.invalidateQueries({ queryKey: ['agent-queue'] });
       qc.invalidateQueries({ queryKey: ['agent-stats'] });
     } catch (e: any) {
-      setRunResult({ error: e.response?.data?.message || 'Failed' });
+      setRunResult({ error: e.response?.data?.message || e.message || 'Request failed. Check Railway logs.' });
     } finally { setRunning(false); }
   }
 
