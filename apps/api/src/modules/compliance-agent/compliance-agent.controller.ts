@@ -11,7 +11,7 @@ export class ComplianceAgentController {
   constructor(private readonly service: ComplianceAgentService) {}
 
   @Post('run')
-  @Throttle({ long: { ttl: 3600000, limit: 1 } })
+  @Throttle({ long: { ttl: 3600000, limit: 10 } })
   @RequirePermissions('cases:create')
   @ApiOperation({ summary: 'Trigger nightly compliance agent run manually' })
   async runAgent(@Request() req: any) {
