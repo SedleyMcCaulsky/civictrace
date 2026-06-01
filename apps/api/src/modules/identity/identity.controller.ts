@@ -25,7 +25,7 @@ export class IdentityController {
   constructor(private readonly identityService: IdentityService) {}
 
   @Public()
-  @Throttle({ short: { ttl: 60000, limit: 5 } })
+  @Throttle({ medium: { ttl: 60000, limit: 5 } })
   @Post('auth/login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and receive JWT tokens' })
