@@ -21,7 +21,7 @@ export class ComplianceAgentController {
   @Get('queue')
   @RequirePermissions('cases:read')
   @ApiOperation({ summary: 'Get agent action queue' })
-  async getQueue(@Query('status') status?: string, @Request() req: any) {
+  async getQueue(@Request() req: any, @Query('status') status?: string) {
     return this.service.getQueue(status, req.user.organisationId);
   }
 

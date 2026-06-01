@@ -85,12 +85,12 @@ export class SummonsService {
        LEFT JOIN compliance.case_compliance_status ccs ON ccs.property_case_id = pc.id
        LEFT JOIN identity.user u ON u.id = s.issued_by WHERE 1=1
        AND ($1::uuid IS NULL OR pc.organisation_id = $1::uuid)`;
-    const p: any[] = [organisationId || null];
+    const params2: any[] = [organisationId || null];
     const p: any[] = [];
-    if (filters.status)        { p.push(filters.status);        q += ` AND s.status = $${p.length}`; }
-    if (filters.financialYear) { p.push(filters.financialYear); q += ` AND s.financial_year = $${p.length}`; }
-    if (filters.parish)        { p.push(filters.parish);        q += ` AND a.parish = $${p.length}`; }
-    return this.db.query(q + ' ORDER BY s.issued_date DESC LIMIT 200', p);
+    if (filters.status)        { params2.push(filters.status);        q += ` AND s.status = $${p.length}`; }
+    if (filters.financialYear) { params2.push(filters.financialYear); q += ` AND s.financial_year = $${p.length}`; }
+    if (filters.parish)        { params2.push(filters.parish);        q += ` AND a.parish = $${p.length}`; }
+    return this.db.query(q + ' ORDER BY s.issued_date DESC LIMIT 200', params2);
   }
 
   async updateStatus(id: string, status: string, courtDate?: string, notes?: string) {

@@ -12,7 +12,7 @@ export class SummonsController {
   @Get('eligible')
   @RequirePermissions('cases:read')
   @ApiOperation({ summary: 'Cases eligible for summons (2+ visits, outstanding balance)' })
-  async eligible(@Query('financialYear') fy?: string, @Request() req: any) { return this.service.getEligibleCases(fy, req.user.organisationId); }
+  async eligible(@Request() req: any, @Query('financialYear') fy?: string) { return this.service.getEligibleCases(fy, req.user.organisationId); }
 
   @Get('cases/:id/check')
   @RequirePermissions('cases:read')
@@ -34,7 +34,7 @@ export class SummonsController {
   @Get()
   @RequirePermissions('cases:read')
   @ApiOperation({ summary: 'Get all summons' })
-  async all(@Query('status') status?: string, @Query('financialYear') fy?: string, @Query('parish') parish?: string, @Request() req: any) {
+  async all(@Request() req: any, @Query('status') status?: string, @Query('financialYear') fy?: string, @Query('parish') parish?: string) {
     return this.service.getAllSummons({ status, financialYear: fy, parish }, req.user.organisationId);
   }
 
