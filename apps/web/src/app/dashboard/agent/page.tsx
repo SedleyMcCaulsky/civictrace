@@ -102,7 +102,9 @@ export default function AgentPage() {
 
       {runResult && (
         <div style={{ background:runResult.error?C.redBg:C.greenBg, border:`1.5px solid ${runResult.error?C.redBd:C.greenBd}`, borderRadius:'10px', padding:'12px 16px', marginBottom:'1.25rem' }}>
-          {runResult.error
+          {runResult.info
+            ? <p style={{ color:C.blue, fontFamily:F.body, fontSize:'0.82rem', margin:0 }}>{runResult.info}</p>
+            : runResult.error
             ? <p style={{ color:C.red, fontFamily:F.body, fontSize:'0.82rem', margin:0 }}>Error: {runResult.error}</p>
             : <p style={{ color:C.green, fontFamily:F.body, fontSize:'0.82rem', margin:0 }}>
                 Agent complete — <strong>{runResult.analysed}</strong> analysed, <strong>{runResult.queued}</strong> queued
