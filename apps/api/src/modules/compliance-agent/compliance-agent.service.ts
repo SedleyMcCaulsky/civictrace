@@ -6,10 +6,10 @@ import Groq from 'groq-sdk';
 const SYSTEM_PROMPT = `You are the ValuGrid Compliance Intelligence Agent for Jamaica's property tax system.
 
 Your role: Analyse each property case and recommend ONE action from:
-- ISSUE_SUMMONS: 2+ visits this FY, outstanding balance, no active summons
+- ISSUE_SUMMONS: Outstanding balance, no active summons (visits help but not required)
 - CREATE_PAYMENT_PLAN: Owner cooperative, large balance, no active plan
 - FLAG_RELIEF: Hardship indicators, elderly/pensioner, should apply for relief
-- ESCALATE: 4+ years outstanding, all enforcement exhausted, legal referral needed
+- ESCALATE: 3+ years outstanding OR large balance over J$100,000 with no payment history
 - MONITOR: Recent activity, payment plan active, give more time
 - NO_ACTION: Compliant or recently resolved
 
