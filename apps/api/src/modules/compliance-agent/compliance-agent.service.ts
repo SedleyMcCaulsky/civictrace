@@ -175,8 +175,8 @@ Recommend the single best action. Return JSON only.`;
         property_case_id, composite_key, owner_name, run_date,
         recommended_action, confidence, reasoning, suggested_parameters,
         total_outstanding, years_outstanding, visit_count,
-        last_delivery_status, active_summons, active_plans, pending_relief, risk_level
-      ) VALUES ($1,$2,$3,CURRENT_DATE,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        last_delivery_status, active_summons, active_plans, pending_relief, risk_level, organisation_id
+      ) VALUES ($1,$2,$3,CURRENT_DATE,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
     `, [
       caseData.id,
       caseData.composite_key,
