@@ -47,7 +47,7 @@ export class ComplianceAgentService {
     return this.db.query(`
       SELECT
         pc.id, pc.composite_key, pc.owner_name_search as owner_name,
-        pc.property_address, pc.property_type, pc.is_strata,
+        pc.property_address, pc.property_type, pc.is_strata, pc.organisation_id,
         a.name as area_name, a.parish, a.region,
         ccs.status as compliance_status,
         ccs.risk_level,
@@ -104,7 +104,7 @@ export class ComplianceAgentService {
         AND COALESCE(ccs.total_outstanding, 0) > 0
         AND ($4::uuid IS NULL OR pc.organisation_id = $4::uuid)
 
-      GROUP BY pc.id, pc.composite_key, pc.owner_name_search, pc.property_address,
+      GROUP BY pc.id, pc.composite_key, pc.owner_name_search, pc.property_address, pc.organisation_id,
                pc.property_type, pc.is_strata, a.name, a.parish, a.region,
                ccs.status, ccs.risk_level, ccs.total_outstanding,
                ccs.years_outstanding, ccs.last_delivery_status, ccs.last_delivery_at
