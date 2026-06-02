@@ -49,7 +49,7 @@ export default function AgentPage() {
   async function runAgent() {
     setRunning(true); setRunResult(null);
     try {
-      const r = await api.post('/agent/run');
+      const r = await api.post('/agent/run', {}, { timeout: 120000 });
       setRunResult(r.data);
       qc.invalidateQueries({ queryKey: ['agent-queue'] });
       qc.invalidateQueries({ queryKey: ['agent-stats'] });
